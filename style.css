@@ -1,0 +1,355 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #map {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+/* === БОКОВОЕ МЕНЮ === */
+#sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px;
+  width: 280px;
+  height: 100%;
+  background: white;
+  z-index: 2000;
+  padding: 20px;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+  transition: left 0.3s ease;
+  overflow-y: auto;
+}
+
+#sidebar.active {
+  left: 0;
+}
+
+#sidebar h3 {
+  margin-bottom: 16px;
+  font-family: Arial, sans-serif;
+  color: #333;
+}
+
+#zone-list label {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  color: #222;
+}
+
+#zone-list input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.2);
+}
+
+#close-sidebar {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+/* === ОВЕРЛЕЙ === */
+#overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  z-index: 1999;
+}
+
+#overlay.active {
+  display: block;
+}
+
+/* === КНОПКА МЕНЮ === */
+#menu-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 2001;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* === СТАРЫЕ СТИЛИ === */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: '';
+  position: absolute;
+  background: red;
+}
+
+#crosshair::before {
+  width: 2px;
+  height: 20px;
+  left: 9px;
+  top: 0;
+}
+
+#crosshair::after {
+  width: 20px;
+  height: 2px;
+  left: 0;
+  top: 9px;
+}
+
+#control-panel {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 95%;
+}
+
+#control-panel button {
+  padding: 12px 16px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-weight: bold;
+  min-width: 80px;
+  touch-action: manipulation;
+}
+
+#control-panel button:hover {
+  background: #f0f0f0;
+}
+
+@media (max-width: 768px) {
+  #control-panel {
+    bottom: 60px;
+    gap: 6px;
+  }
+  #control-panel button {
+    padding: 14px 12px;
+    font-size: 14px;
+    min-width: 70px;
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  #control-panel {
+    bottom: 70px;
+  }
+  #control-panel button {
+    padding: 12px 8px;
+    font-size: 13px;
+    min-width: 60px;
+  }
+}
+
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+.distance-label div {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #ffff00;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #000;
+  text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+#btn-calculate {
+  display: none;
+}
+
+.coordinates-display {
+  position: fixed !important;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-family: 'Arial', sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #333;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  float: none !important;
+}
+
+.coordinates-content {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.coordinates-content strong {
+  color: #000;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .coordinates-display {
+    font-size: 13px;
+    padding: 8px 12px;
+    bottom: 5px;
+    max-width: 90vw;
+  }
+  .coordinates-content {
+    white-space: normal;
+  }
+  .coordinates-content strong {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .coordinates-display {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  .coordinates-content strong {
+    font-size: 12px;
+  }
+}
+
+.leaflet-bottom .coordinates-display,
+.leaflet-control-container .coordinates-display {
+  display: none !important;
+}
+
+.operator-marker {
+  text-align: center;
+}
+
+.operator-marker-inner {
+  background: #ff0000;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.leaflet-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.leaflet-popup-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .leaflet-popup-content {
+    font-size: 13px;
+  }
+}
+
+/* === КНОПКА И МЕНЮ В ПРАВОМ НИЖНЕМ УГЛУ === */
+.zone-toggle-btn {
+  position: absolute !important;
+  bottom: 10px !important;
+  right: 10px !important;
+  z-index: 1001 !important;
+  width: 40px !important;
+  height: 40px !important;
+  background: white !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.zone-menu-container {
+  position: absolute !important;
+  bottom: 55px !important;
+  right: 10px !important;
+  width: 220px !important;
+  background: white !important;
+  border: 1px solid #ccc !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+  z-index: 1000 !important;
+  padding: 12px !important;
+  display: none !important;
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+}
+
+.zone-menu-container.active {
+  display: block !important;
+}
+
+.zone-menu-container label {
+  display: flex !important;
+  align-items: center !important;
+  margin: 6px 0 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 15px !important;
+  color: #222 !important;
+  white-space: nowrap !important;
+}
+
+.zone-menu-container input[type="checkbox"] {
+  margin-right: 10px !important;
+  transform: scale(1.2) !important;
+}
