@@ -304,7 +304,7 @@ html, body, #map {
 .zone-toggle-btn {
   position: absolute !important;
   bottom: 10px !important;
-  right: 10px !important;
+  left: 10px !important;
   z-index: 1001 !important;
   width: 40px !important;
   height: 40px !important;
