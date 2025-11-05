@@ -183,7 +183,7 @@ html, body, #map {
 }
 
 .leaflet-control-attribution {
-  display: none !important;
+  display: none;
 }
 
 .distance-label div {
@@ -203,7 +203,7 @@ html, body, #map {
 }
 
 .coordinates-display {
-  position: fixed !important;
+  position: fixed;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
@@ -220,10 +220,10 @@ html, body, #map {
   text-align: center;
   backdrop-filter: blur(4px);
   pointer-events: none;
-  width: auto !important;
-  height: auto !important;
-  margin: 0 !important;
-  float: none !important;
+  width: auto;
+  height: auto;
+  margin: 0;
+  float: none;
 }
 
 .coordinates-content {
@@ -263,7 +263,7 @@ html, body, #map {
 
 .leaflet-bottom .coordinates-display,
 .leaflet-control-container .coordinates-display {
-  display: none !important;
+  display: none;
 }
 
 .operator-marker {
@@ -302,14 +302,14 @@ html, body, #map {
 
 /* === КНОПКА И МЕНЮ В ПРАВОМ НИЖНЕМ УГЛУ === */
 .zone-toggle-btn {
-  position: absolute !important;
-  bottom: 10px !important;
-  right: 10px !important;
-  z-index: 1001 !important;
-  width: 40px !important;
-  height: 40px !important;
-  background: white !important;
-  border: 1px solid #ccc !important;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #ccc;
   border-radius: 4px !important;
   font-size: 20px !important;
   cursor: pointer !important;
