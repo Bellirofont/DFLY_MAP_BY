@@ -25,6 +25,8 @@ function getZoneStyle(feature) {
   else if (name.startsWith('UMD_')) return { ...baseStyle, color: '#654321', fillColor: '#b57e54' };
   else if (name.startsWith('UMP_')) return { ...baseStyle, color: '#cc8400', fillColor: '#ffa500' };
   else if (name.startsWith('UMR_')) return { ...baseStyle, color: '#cc0000', fillColor: '#ff0000' };
+  else if (name.startsWith('MIL_')) return { ...baseStyle, color: '#43cd07', fillColor: '#d5e9cc' };
+  else if (name.startsWith('RB_')) return { ...baseStyle, color: '#3d5f2e', fillColor: '#dde2db' };
   else if (name.startsWith('ARD_') || name.startsWith('ARZ_')) return { ...baseStyle, color: '#666666', fillColor: '#c8c8c8' };
   else return { ...baseStyle, color: '#cc0000', fillColor: '#ff0000' };
 }
