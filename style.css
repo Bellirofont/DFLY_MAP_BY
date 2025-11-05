@@ -357,8 +357,8 @@ html, body, #map {
 /* === ДОПОЛНИТЕЛЬНЫЕ ЭЛЕМЕНТЫ УПРАВЛЕНИЯ === */
 #extra-controls {
   position: absolute;
-  bottom: 20px;
-  right: 65px;
+  bottom: 30px;
+  right: 60px;
   z-index: 1000;
 }
 
