@@ -157,6 +157,17 @@ function initMap() {
   createZoneToggleControl();
 }
 
+function setInteractiveRecursive(layer, interactive) {
+  if (layer instanceof L.LayerGroup) {
+    layer.eachLayer(subLayer => setInteractiveRecursive(subLayer, interactive));
+  } else {
+    layer.options.interactive = interactive;
+    if (layer._path) {
+      layer._path.style.pointerEvents = interactive ? 'auto' : 'none';
+    }
+  }
+}
+
 function loadZones() {
   fetch('Fly_Zones_BY.geojson')
     .then(res => {
@@ -191,9 +202,9 @@ function loadZones() {
                 l.bindPopup(`<b>${n}</b><br>${desc}`);
               }
             },
-            style: getZoneStyle,
-            interactive: !isLargeZone
+            style: getZoneStyle
           });
+          setInteractiveRecursive(layer, !isLargeZone);
           zoneLayers[prefixFound].addLayer(layer);
         } else {
           console.warn('Не распознана зона:', name);
@@ -302,27 +313,23 @@ function checkDetailedIntersections(geometryType, geometry) {
 
 function disableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
-    zoneLayers[prefix].eachLayer(subLayer => {
-      subLayer.options.interactive = false;
-      if (subLayer._path) subLayer._path.style.pointerEvents = 'none';
-      subLayer.off('click');
+    zoneLayers[prefix].eachLayer(geoLayer => {
+      setInteractiveRecursive(geoLayer, false);
+      geoLayer.off('click');
     });
   });
 }
 
 function enableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
-    zoneLayers[prefix].eachLayer(subLayer => {
-      if (subLayer.getPopup()) {
-        subLayer.options.interactive = true;
-        if (subLayer._path) subLayer._path.style.pointerEvents = 'auto';
-        subLayer.on('click', function(e) {
+    zoneLayers[prefix].eachLayer(geoLayer => {
+      if (geoLayer.getPopup()) {
+        setInteractiveRecursive(geoLayer, true);
+        geoLayer.on('click', function(e) {
           this.openPopup();
         });
       } else {
-        subLayer.options.interactive = false;
-        if (subLayer._path) subLayer._path.style.pointerEvents = 'none';
-        subLayer.off('click');
+        setInteractiveRecursive(geoLayer, false);
       }
     });
   });
