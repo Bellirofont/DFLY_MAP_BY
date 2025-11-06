@@ -1,4 +1,3 @@
-```javascript
 let map;
 let flyZonesGeoJSON = null;
 let rblaMode = false;
@@ -882,4 +881,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupDragHandlers();
 });
-```
+
