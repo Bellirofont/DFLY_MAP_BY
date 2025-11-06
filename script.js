@@ -182,7 +182,7 @@ function loadZones() {
                 l.bindPopup(`<b>${n}</b><br>${desc}`);
               },
               style: getZoneStyle,
-              interactive: false  // Делаем зоны неинтерактивными, чтобы клики проходили сквозь них
+              interactive: false
             });
             zoneLayers[prefix].addLayer(layer);
             assigned = true;
@@ -570,7 +570,7 @@ function calculateRbla() {
     if (intersections.length > 0) {
       content += `<b>Пересечения зон:</b><br>`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}: ${inter.details.join(', ')}<br>`;
+        content += `• ${inter.name}<br>`;
       });
     } else {
       content += `<b>Пересечений нет</b>`;
@@ -610,7 +610,7 @@ function calculateMbla() {
     if (intersections.length > 0) {
       content += `<b>Пересечения зон:</b><br>`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}: ${inter.details.join(', ')}<br>`;
+        content += `• ${inter.name}<br>`;
       });
     } else {
       content += `<b>Пересечений нет</b>`;
@@ -658,7 +658,7 @@ function calculatePbla() {
     if (intersections.length > 0) {
       content += `<b>Пересечения зон:</b><br>`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}: ${inter.details.join(', ')}<br>`;
+        content += `• ${inter.name}<br>`;
       });
     } else {
       content += `<b>Пересечений нет</b>`;
