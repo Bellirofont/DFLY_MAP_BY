@@ -540,7 +540,7 @@ function calculateRbla() {
   };
   const intersections = checkDetailedIntersections('circle', geometry);
   getElevation(centerPoint.lat, centerPoint.lng).then(elevation => {
-    let content = `<b>Р-БЛА: Радиусный план</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
+    let content = `<b>Расчет ИВП БЛА по радиусу</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
    
     if (intersections.length > 0) {
       let columnCount = 1;
@@ -578,7 +578,7 @@ function calculateMbla() {
   const intersections = checkDetailedIntersections('line', geometry);
   const elevationPromises = mblaPoints.map(point => getElevation(point.lat, point.lng));
   Promise.all(elevationPromises).then(elevations => {
-    let content = `<b>М-БЛА: Маршрутный план</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
+    let content = `<b>Расчет ИВП БЛА по маршруту</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
    
     content += '<b>Высоты рельефа:</b><br>';
     elevations.forEach((elevation, index) => {
@@ -632,7 +632,7 @@ function calculatePbla() {
   const elevationPromises = pblaPoints.map(point => getElevation(point.lat, point.lng));
   Promise.all(elevationPromises).then(elevations => {
     const avgElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
-    let content = `<b>П-БЛА: Плановый полигон</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
+    let content = `<b>Расчет ИВП БЛА по полигону</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
