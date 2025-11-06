@@ -157,17 +157,6 @@ function initMap() {
   createZoneToggleControl();
 }
 
-function setInteractiveRecursive(layer, interactive) {
-  if (layer instanceof L.LayerGroup) {
-    layer.eachLayer(subLayer => setInteractiveRecursive(subLayer, interactive));
-  } else {
-    layer.options.interactive = interactive;
-    if (layer._path) {
-      layer._path.style.pointerEvents = interactive ? 'auto' : 'none';
-    }
-  }
-}
-
 function loadZones() {
   fetch('Fly_Zones_BY.geojson')
     .then(res => {
@@ -202,9 +191,9 @@ function loadZones() {
                 l.bindPopup(`<b>${n}</b><br>${desc}`);
               }
             },
-            style: getZoneStyle
+            style: getZoneStyle,
+            interactive: !isLargeZone
           });
-          setInteractiveRecursive(layer, !isLargeZone);
           zoneLayers[prefixFound].addLayer(layer);
         } else {
           console.warn('Не распознана зона:', name);
