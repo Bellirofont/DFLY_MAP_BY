@@ -302,23 +302,27 @@ function checkDetailedIntersections(geometryType, geometry) {
 
 function disableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
-    zoneLayers[prefix].eachLayer(layer => {
-      layer.options.interactive = false;
-      layer.off('click');
+    zoneLayers[prefix].eachLayer(subLayer => {
+      subLayer.options.interactive = false;
+      if (subLayer._path) subLayer._path.style.pointerEvents = 'none';
+      subLayer.off('click');
     });
   });
 }
 
 function enableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
-    zoneLayers[prefix].eachLayer(layer => {
-      if (layer.getPopup()) {
-        layer.options.interactive = true;
-        layer.on('click', function(e) {
+    zoneLayers[prefix].eachLayer(subLayer => {
+      if (subLayer.getPopup()) {
+        subLayer.options.interactive = true;
+        if (subLayer._path) subLayer._path.style.pointerEvents = 'auto';
+        subLayer.on('click', function(e) {
           this.openPopup();
         });
       } else {
-        layer.options.interactive = false;
+        subLayer.options.interactive = false;
+        if (subLayer._path) subLayer._path.style.pointerEvents = 'none';
+        subLayer.off('click');
       }
     });
   });
