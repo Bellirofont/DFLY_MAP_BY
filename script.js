@@ -181,7 +181,8 @@ function loadZones() {
                 const desc = feat.properties.description || '';
                 l.bindPopup(`<b>${n}</b><br>${desc}`);
               },
-              style: getZoneStyle
+              style: getZoneStyle,
+              interactive: false  // Делаем зоны неинтерактивными, чтобы клики проходили сквозь них
             });
             zoneLayers[prefix].addLayer(layer);
             assigned = true;
@@ -830,8 +831,6 @@ function getGpsLocation() {
 }
 
 function placeOperatorMarker() {
-  // Логика размещения маркера оператора
-  // Для примера, размещаем в центре
   const center = map.getCenter();
   if (operatorMarker) map.removeLayer(operatorMarker);
   operatorMarker = L.marker(center, {
