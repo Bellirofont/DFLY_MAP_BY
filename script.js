@@ -192,7 +192,7 @@ function loadZones() {
               }
             },
             style: getZoneStyle,
-            interactive: true
+            interactive: !isLargeZone
           });
           zoneLayers[prefixFound].addLayer(layer);
         } else {
@@ -886,5 +886,4 @@ function placeOperatorMarker() {
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupDragHandlers();
-  enableZoneInteractivity();
 });
