@@ -157,17 +157,6 @@ function initMap() {
   createZoneToggleControl();
 }
 
-function setInteractiveRecursive(layer, interactive) {
-  if (layer instanceof L.LayerGroup) {
-    layer.eachLayer(subLayer => setInteractiveRecursive(subLayer, interactive));
-  } else {
-    layer.options.interactive = interactive;
-    if (layer._path) {
-      layer._path.style.pointerEvents = interactive ? 'auto' : 'none';
-    }
-  }
-}
-
 function loadZones() {
   fetch('Fly_Zones_BY.geojson')
     .then(res => {
@@ -202,9 +191,9 @@ function loadZones() {
                 l.bindPopup(`<b>${n}</b><br>${desc}`);
               }
             },
-            style: getZoneStyle
+            style: getZoneStyle,
+            interactive: !isLargeZone
           });
-          setInteractiveRecursive(layer, !isLargeZone);
           zoneLayers[prefixFound].addLayer(layer);
         } else {
           console.warn('Не распознана зона:', name);
@@ -615,10 +604,17 @@ function calculateRbla() {
     let content = `<b>Р-БЛА: Радиусный план</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
     
     if (intersections.length > 0) {
-      content += `<b>Пересечения зон:</b><br>`;
+      let columnCount = 1;
+      if (intersections.length >= 6 && intersections.length <= 18) {
+        columnCount = 2;
+      } else if (intersections.length >= 19 && intersections.length <= 32) {
+        columnCount = 3;
+      }
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}<br>`;
+        content += `<li>${inter.name}</li>`;
       });
+      content += `</ul>`;
     } else {
       content += `<b>Пересечений нет</b>`;
     }
@@ -656,10 +652,17 @@ function calculateMbla() {
     });
     
     if (intersections.length > 0) {
-      content += `<b>Пересечения зон:</b><br>`;
+      let columnCount = 1;
+      if (intersections.length >= 6 && intersections.length <= 18) {
+        columnCount = 2;
+      } else if (intersections.length >= 19 && intersections.length <= 32) {
+        columnCount = 3;
+      }
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}<br>`;
+        content += `<li>${inter.name}</li>`;
       });
+      content += `</ul>`;
     } else {
       content += `<b>Пересечений нет</b>`;
     }
@@ -705,10 +708,17 @@ function calculatePbla() {
     let content = `<b>П-БЛА: Плановый полигон</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
     
     if (intersections.length > 0) {
-      content += `<b>Пересечения зон:</b><br>`;
+      let columnCount = 1;
+      if (intersections.length >= 6 && intersections.length <= 18) {
+        columnCount = 2;
+      } else if (intersections.length >= 19 && intersections.length <= 32) {
+        columnCount = 3;
+      }
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `• ${inter.name}<br>`;
+        content += `<li>${inter.name}</li>`;
       });
+      content += `</ul>`;
     } else {
       content += `<b>Пересечений нет</b>`;
     }
