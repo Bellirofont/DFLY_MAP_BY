@@ -300,19 +300,25 @@ function checkDetailedIntersections(geometryType, geometry) {
   return intersections;
 }
 
-function disableZonePopups() {
+function disableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
     zoneLayers[prefix].eachLayer(layer => {
+      layer.options.interactive = false;
       layer.off('click');
     });
   });
 }
 
-function enableZonePopups() {
+function enableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
     zoneLayers[prefix].eachLayer(layer => {
       if (layer.getPopup()) {
-        layer.on('click', layer._openPopup);
+        layer.options.interactive = true;
+        layer.on('click', function(e) {
+          this.openPopup();
+        });
+      } else {
+        layer.options.interactive = false;
       }
     });
   });
@@ -345,7 +351,7 @@ function startRbla() {
   rblaMode = true;
   currentMode = 'rbla';
   document.getElementById('btn-rbla').disabled = true;
-  disableZonePopups();
+  disableZoneInteractivity();
   map.dragging.disable();
   map.once('click', (e) => {
     centerPoint = e.latlng;
@@ -359,7 +365,7 @@ function startMbla() {
   mblaMode = true;
   currentMode = 'mbla';
   document.getElementById('btn-mbla').disabled = true;
-  disableZonePopups();
+  disableZoneInteractivity();
   map.dragging.disable();
   map.on('click', addMblaPoint);
 }
@@ -369,7 +375,7 @@ function startPbla() {
   pblaMode = true;
   currentMode = 'pbla';
   document.getElementById('btn-pbla').disabled = true;
-  disableZonePopups();
+  disableZoneInteractivity();
   map.dragging.disable();
   map.on('click', addPblaPoint);
 }
@@ -452,7 +458,7 @@ function resetMbla() {
   map.off('click', addMblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function addPblaPoint(e) {
@@ -540,7 +546,7 @@ function resetPbla() {
   map.off('click', addPblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function drawTempLine(e) {
@@ -581,7 +587,7 @@ function resetRBLA() {
   if (btn) btn.disabled = false;
   map.dragging.enable();
   map.off('mousemove', drawTempLine);
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function calculateRbla() {
@@ -617,7 +623,7 @@ function calculateRbla() {
   map.off('mousemove', drawTempLine);
   map.off('click', finishRadius);
   currentMode = null;
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function calculateMbla() {
@@ -667,7 +673,7 @@ function calculateMbla() {
     marker.off('mouseup');
   });
   currentMode = null;
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function calculatePbla() {
@@ -726,7 +732,7 @@ function calculatePbla() {
     marker.off('mouseup');
   });
   currentMode = null;
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function createZoneToggleControl() {
@@ -842,7 +848,7 @@ function cancelMode() {
   }
   document.getElementById('btn-calculate').style.display = 'none';
   currentMode = null;
-  enableZonePopups();
+  enableZoneInteractivity();
 }
 
 function reloadMap() {
@@ -880,5 +886,5 @@ function placeOperatorMarker() {
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupDragHandlers();
+  enableZoneInteractivity();
 });
-
