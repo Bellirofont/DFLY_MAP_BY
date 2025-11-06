@@ -1,3 +1,4 @@
+```javascript
 let map;
 let flyZonesGeoJSON = null;
 let rblaMode = false;
@@ -187,10 +188,12 @@ function loadZones() {
             onEachFeature: (feat, l) => {
               const n = feat.properties.Name || feat.properties.name || 'Зона';
               const desc = feat.properties.description || '';
-              l.bindPopup(`<b>${n}</b><br>${desc}`);
+              if (!isLargeZone) {
+                l.bindPopup(`<b>${n}</b><br>${desc}`);
+              }
             },
             style: getZoneStyle,
-            interactive: !isLargeZone  // Неинтерактивные для RB и MIL
+            interactive: true
           });
           zoneLayers[prefixFound].addLayer(layer);
         } else {
@@ -298,6 +301,24 @@ function checkDetailedIntersections(geometryType, geometry) {
   return intersections;
 }
 
+function disableZonePopups() {
+  ZONE_PREFIXES.forEach(prefix => {
+    zoneLayers[prefix].eachLayer(layer => {
+      layer.off('click');
+    });
+  });
+}
+
+function enableZonePopups() {
+  ZONE_PREFIXES.forEach(prefix => {
+    zoneLayers[prefix].eachLayer(layer => {
+      if (layer.getPopup()) {
+        layer.on('click', layer._openPopup);
+      }
+    });
+  });
+}
+
 function initButtons() {
   document.getElementById('btn-rbla').onclick = startRbla;
   document.getElementById('btn-mbla').onclick = startMbla;
@@ -325,6 +346,7 @@ function startRbla() {
   rblaMode = true;
   currentMode = 'rbla';
   document.getElementById('btn-rbla').disabled = true;
+  disableZonePopups();
   map.dragging.disable();
   map.once('click', (e) => {
     centerPoint = e.latlng;
@@ -338,8 +360,19 @@ function startMbla() {
   mblaMode = true;
   currentMode = 'mbla';
   document.getElementById('btn-mbla').disabled = true;
+  disableZonePopups();
   map.dragging.disable();
   map.on('click', addMblaPoint);
+}
+
+function startPbla() {
+  if (currentMode) cancelMode();
+  pblaMode = true;
+  currentMode = 'pbla';
+  document.getElementById('btn-pbla').disabled = true;
+  disableZonePopups();
+  map.dragging.disable();
+  map.on('click', addPblaPoint);
 }
 
 function addMblaPoint(e) {
@@ -420,15 +453,7 @@ function resetMbla() {
   map.off('click', addMblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
-}
-
-function startPbla() {
-  if (currentMode) cancelMode();
-  pblaMode = true;
-  currentMode = 'pbla';
-  document.getElementById('btn-pbla').disabled = true;
-  map.dragging.disable();
-  map.on('click', addPblaPoint);
+  enableZonePopups();
 }
 
 function addPblaPoint(e) {
@@ -516,6 +541,7 @@ function resetPbla() {
   map.off('click', addPblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
+  enableZonePopups();
 }
 
 function drawTempLine(e) {
@@ -556,6 +582,7 @@ function resetRBLA() {
   if (btn) btn.disabled = false;
   map.dragging.enable();
   map.off('mousemove', drawTempLine);
+  enableZonePopups();
 }
 
 function calculateRbla() {
@@ -591,6 +618,7 @@ function calculateRbla() {
   map.off('mousemove', drawTempLine);
   map.off('click', finishRadius);
   currentMode = null;
+  enableZonePopups();
 }
 
 function calculateMbla() {
@@ -640,6 +668,7 @@ function calculateMbla() {
     marker.off('mouseup');
   });
   currentMode = null;
+  enableZonePopups();
 }
 
 function calculatePbla() {
@@ -698,6 +727,7 @@ function calculatePbla() {
     marker.off('mouseup');
   });
   currentMode = null;
+  enableZonePopups();
 }
 
 function createZoneToggleControl() {
@@ -813,6 +843,7 @@ function cancelMode() {
   }
   document.getElementById('btn-calculate').style.display = 'none';
   currentMode = null;
+  enableZonePopups();
 }
 
 function reloadMap() {
@@ -851,3 +882,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupDragHandlers();
 });
+```
