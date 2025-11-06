@@ -213,7 +213,10 @@ function checkDetailedIntersections(geometryType, geometry) {
   
   flyZonesGeoJSON.features.forEach(feature => {
     const zoneName = feature.properties.Name || feature.properties.name || 'Зона';
-    const zoneGeoJSON = turf.feature(feature.geometry);
+    let zoneGeometry = feature.geometry;
+    
+    // Если это MultiPolygon, используем его как есть
+    const zoneTurf = turf.feature(zoneGeometry);
     
     let details = [];
     
@@ -223,13 +226,13 @@ function checkDetailedIntersections(geometryType, geometry) {
       
       // Проверка центра внутри зоны
       const centerPoint = turf.point([geometry.center.lng, geometry.center.lat]);
-      if (turf.booleanPointInPolygon(centerPoint, zoneGeoJSON)) {
+      if (turf.booleanPointInPolygon(centerPoint, zoneTurf)) {
         details.push('центр внутри зоны');
       }
       
       // Проверка пересечения границ
       const circleBoundary = turf.polygonToLine(turfCircle);
-      if (turf.booleanIntersects(circleBoundary, zoneGeoJSON)) {
+      if (turf.booleanIntersects(circleBoundary, zoneTurf)) {
         details.push('граница круга пересекает зону');
       }
       
@@ -240,20 +243,20 @@ function checkDetailedIntersections(geometryType, geometry) {
       // Проверка точек внутри зоны
       geometry.points.forEach((p, index) => {
         const point = turf.point([p.lng, p.lat]);
-        if (turf.booleanPointInPolygon(point, zoneGeoJSON)) {
+        if (turf.booleanPointInPolygon(point, zoneTurf)) {
           details.push(`точка ${index + 1} внутри зоны`);
         }
       });
       
       // Проверка пересечения линии
-      if (turf.booleanIntersects(turfLine, zoneGeoJSON)) {
+      if (turf.booleanIntersects(turfLine, zoneTurf)) {
         details.push('линия пересекает зону');
       }
       
       // Проверка сегментов между точками
       for (let i = 0; i < geometry.points.length - 1; i++) {
         const segment = turf.lineString([[geometry.points[i].lng, geometry.points[i].lat], [geometry.points[i+1].lng, geometry.points[i+1].lat]]);
-        if (turf.booleanIntersects(segment, zoneGeoJSON)) {
+        if (turf.booleanIntersects(segment, zoneTurf)) {
           details.push(`сегмент между точками ${i+1} и ${i+2} пересекает зону`);
         }
       }
@@ -263,21 +266,21 @@ function checkDetailedIntersections(geometryType, geometry) {
       const turfPolygon = turf.polygon([geometry.points.map(p => [p.lng, p.lat])]);
       
       // Проверка полигона на пересечение
-      if (turf.booleanIntersects(turfPolygon, zoneGeoJSON)) {
+      if (turf.booleanIntersects(turfPolygon, zoneTurf)) {
         details.push('полигон пересекает зону');
       }
       
       // Проверка точек внутри зоны
       geometry.points.forEach((p, index) => {
         const point = turf.point([p.lng, p.lat]);
-        if (turf.booleanPointInPolygon(point, zoneGeoJSON)) {
+        if (turf.booleanPointInPolygon(point, zoneTurf)) {
           details.push(`точка полигона ${index + 1} внутри зоны`);
         }
       });
       
       // Проверка границ линий полигона
       const polygonBoundary = turf.polygonToLine(turfPolygon);
-      if (turf.booleanIntersects(polygonBoundary, zoneGeoJSON)) {
+      if (turf.booleanIntersects(polygonBoundary, zoneTurf)) {
         details.push('граница полигона пересекает зону');
       }
     }
@@ -300,12 +303,14 @@ function initButtons() {
   document.getElementById('btn-rld').onclick = reloadMap;
 
   document.getElementById('btn-calculate').onclick = () => {
-    if (rblaMode || currentMode === 'rbla') {
+    if (tempCircle && radiusMeters) {
       calculateRbla();
-    } else if (mblaMode || currentMode === 'mbla') {
+    } else if (mblaPoints.length >= 2) {
       calculateMbla();
-    } else if (pblaMode || currentMode === 'pbla') {
+    } else if (pblaPoints.length >= 3) {
       calculatePbla();
+    } else {
+      alert('Недостаточно данных для расчета. Создайте объект полета сначала.');
     }
   };
 }
@@ -330,7 +335,6 @@ function startMbla() {
   document.getElementById('btn-mbla').disabled = true;
   map.dragging.disable();
   map.on('click', addMblaPoint);
-  document.getElementById('btn-calculate').style.display = 'block'; // Показываем сразу, но расчет только если >=2 точки
 }
 
 function addMblaPoint(e) {
@@ -369,6 +373,7 @@ function addMblaPoint(e) {
       map.removeLayer(mblaPolyline);
     }
     mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
+    document.getElementById('btn-calculate').style.display = 'block';
   }
 }
 
@@ -387,6 +392,8 @@ function removeLastMblaPoint() {
     
     if (mblaPoints.length > 1) {
       mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
+    } else {
+      document.getElementById('btn-calculate').style.display = 'none';
     }
   }
 }
@@ -407,6 +414,7 @@ function resetMbla() {
   clearMbla();
   map.off('click', addMblaPoint);
   map.dragging.enable();
+  document.getElementById('btn-calculate').style.display = 'none';
 }
 
 function startPbla() {
@@ -502,6 +510,7 @@ function resetPbla() {
   clearPbla();
   map.off('click', addPblaPoint);
   map.dragging.enable();
+  document.getElementById('btn-calculate').style.display = 'none';
 }
 
 function drawTempLine(e) {
@@ -580,7 +589,7 @@ function calculateRbla() {
 }
 
 function calculateMbla() {
-  if (mblaPoints.length < 2) return;
+  if (mblaPoints.length < 2) return alert('Недостаточно точек для маршрута');
   
   const geometry = {
     points: mblaPoints
@@ -620,7 +629,6 @@ function calculateMbla() {
   // Блокировка дальнейшего добавления/изменения
   mblaMode = false;
   map.off('click', addMblaPoint);
-  map.off('mousemove'); // Если есть обработчики
   currentDraggingMarker = null;
   mblaMarkers.forEach(marker => {
     marker.off('mousedown');
@@ -630,7 +638,7 @@ function calculateMbla() {
 }
 
 function calculatePbla() {
-  if (pblaPoints.length < 3) return;
+  if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
   
   const polygonPoints = [...pblaPoints, pblaPoints[0]];
   
@@ -679,7 +687,6 @@ function calculatePbla() {
   // Блокировка дальнейшего добавления/изменения
   pblaMode = false;
   map.off('click', addPblaPoint);
-  map.off('mousemove'); // Если есть
   currentDraggingMarker = null;
   pblaMarkers.forEach(marker => {
     marker.off('mousedown');
