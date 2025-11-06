@@ -173,23 +173,27 @@ function loadZones() {
       geojson.features.forEach(feature => {
         const name = feature.properties?.Name || feature.properties?.name || '';
         let assigned = false;
+        let prefixFound = null;
         for (const prefix of ZONE_PREFIXES) {
           if (name.startsWith(prefix)) {
-            const layer = L.geoJSON(feature, {
-              onEachFeature: (feat, l) => {
-                const n = feat.properties.Name || feat.properties.name || 'Зона';
-                const desc = feat.properties.description || '';
-                l.bindPopup(`<b>${n}</b><br>${desc}`);
-              },
-              style: getZoneStyle,
-              interactive: false
-            });
-            zoneLayers[prefix].addLayer(layer);
+            prefixFound = prefix;
             assigned = true;
             break;
           }
         }
-        if (!assigned) {
+        if (assigned) {
+          const isLargeZone = prefixFound === 'RB' || prefixFound === 'MIL';
+          const layer = L.geoJSON(feature, {
+            onEachFeature: (feat, l) => {
+              const n = feat.properties.Name || feat.properties.name || 'Зона';
+              const desc = feat.properties.description || '';
+              l.bindPopup(`<b>${n}</b><br>${desc}`);
+            },
+            style: getZoneStyle,
+            interactive: !isLargeZone  // Неинтерактивные для RB и MIL
+          });
+          zoneLayers[prefixFound].addLayer(layer);
+        } else {
           console.warn('Не распознана зона:', name);
         }
       });
