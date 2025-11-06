@@ -203,38 +203,29 @@ function loadZones() {
 // Функция для детализированной проверки пересечений с использованием Turf.js
 function checkDetailedIntersections(geometryType, geometry) {
   if (!flyZonesGeoJSON) return [];
- 
   const intersections = [];
- 
   flyZonesGeoJSON.features.forEach(feature => {
     const zoneName = feature.properties.Name || feature.properties.name || 'Зона';
     let zoneGeometry = feature.geometry;
-   
     // Если это MultiPolygon, используем его как есть
     const zoneTurf = turf.feature(zoneGeometry);
-   
     let details = [];
-   
     if (geometryType === 'circle') {
       // Для R-BLA: круг
       const turfCircle = turf.circle([geometry.center.lng, geometry.center.lat], geometry.radius / 1000, {units: 'kilometers'});
-     
       // Проверка центра внутри зоны
       const centerPoint = turf.point([geometry.center.lng, geometry.center.lat]);
       if (turf.booleanPointInPolygon(centerPoint, zoneTurf)) {
         details.push('центр внутри зоны');
       }
-     
       // Проверка пересечения границ
       const circleBoundary = turf.polygonToLine(turfCircle);
       if (turf.booleanIntersects(circleBoundary, zoneTurf)) {
         details.push('граница круга пересекает зону');
       }
-     
     } else if (geometryType === 'line') {
       // Для M-BLA: линия
       const turfLine = turf.lineString(geometry.points.map(p => [p.lng, p.lat]));
-     
       // Проверка точек внутри зоны
       geometry.points.forEach((p, index) => {
         const point = turf.point([p.lng, p.lat]);
@@ -242,12 +233,10 @@ function checkDetailedIntersections(geometryType, geometry) {
           details.push(`точка ${index + 1} внутри зоны`);
         }
       });
-     
       // Проверка пересечения линии
       if (turf.booleanIntersects(turfLine, zoneTurf)) {
         details.push('линия пересекает зону');
       }
-     
       // Проверка сегментов между точками
       for (let i = 0; i < geometry.points.length - 1; i++) {
         const segment = turf.lineString([[geometry.points[i].lng, geometry.points[i].lat], [geometry.points[i+1].lng, geometry.points[i+1].lat]]);
@@ -255,16 +244,13 @@ function checkDetailedIntersections(geometryType, geometry) {
           details.push(`сегмент между точками ${i+1} и ${i+2} пересекает зону`);
         }
       }
-     
     } else if (geometryType === 'polygon') {
       // Для P-BLA: полигон
       const turfPolygon = turf.polygon([geometry.points.map(p => [p.lng, p.lat])]);
-     
       // Проверка полигона на пересечение
       if (turf.booleanIntersects(turfPolygon, zoneTurf)) {
         details.push('полигон пересекает зону');
       }
-     
       // Проверка точек внутри зоны
       geometry.points.forEach((p, index) => {
         const point = turf.point([p.lng, p.lat]);
@@ -272,19 +258,16 @@ function checkDetailedIntersections(geometryType, geometry) {
           details.push(`точка полигона ${index + 1} внутри зоны`);
         }
       });
-     
       // Проверка границ линий полигона
       const polygonBoundary = turf.polygonToLine(turfPolygon);
       if (turf.booleanIntersects(polygonBoundary, zoneTurf)) {
         details.push('граница полигона пересекает зону');
       }
     }
-   
     if (details.length > 0) {
       intersections.push({ name: zoneName, details: details });
     }
   });
- 
   return intersections;
 }
 function disableZoneInteractivity() {
@@ -363,7 +346,6 @@ function startPbla() {
 function addMblaPoint(e) {
   const latlng = e.latlng;
   mblaPoints.push(latlng);
- 
   const marker = L.marker(latlng, {
     icon: L.divIcon({
       className: 'mbla-marker',
@@ -372,14 +354,12 @@ function addMblaPoint(e) {
       iconAnchor: [12, 12]
     })
   }).addTo(map);
- 
   marker.on('mousedown', function() {
     dragStartTimeout = setTimeout(() => {
       this._icon.classList.add('editing-point');
       currentDraggingMarker = this;
     }, 500);
   });
- 
   marker.on('mouseup', function() {
     if (dragStartTimeout) {
       clearTimeout(dragStartTimeout);
@@ -388,9 +368,7 @@ function addMblaPoint(e) {
     this._icon.classList.remove('editing-point');
     currentDraggingMarker = null;
   });
- 
   mblaMarkers.push(marker);
- 
   if (mblaPoints.length > 1) {
     if (mblaPolyline) {
       map.removeLayer(mblaPolyline);
@@ -402,16 +380,16 @@ function addMblaPoint(e) {
 function removeLastMblaPoint() {
   if (mblaPoints.length > 0) {
     mblaPoints.pop();
-   
+  
     if (mblaMarkers.length > 0) {
       map.removeLayer(mblaMarkers.pop());
     }
-   
+  
     if (mblaPolyline) {
       map.removeLayer(mblaPolyline);
       mblaPolyline = null;
     }
-   
+  
     if (mblaPoints.length > 1) {
       mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
     } else {
@@ -440,7 +418,6 @@ function resetMbla() {
 function addPblaPoint(e) {
   const latlng = e.latlng;
   pblaPoints.push(latlng);
- 
   const marker = L.marker(latlng, {
     icon: L.divIcon({
       className: 'pbla-marker',
@@ -449,14 +426,12 @@ function addPblaPoint(e) {
       iconAnchor: [12, 12]
     })
   }).addTo(map);
- 
   marker.on('mousedown', function() {
     dragStartTimeout = setTimeout(() => {
       this._icon.classList.add('editing-point');
       currentDraggingMarker = this;
     }, 500);
   });
- 
   marker.on('mouseup', function() {
     if (dragStartTimeout) {
       clearTimeout(dragStartTimeout);
@@ -465,18 +440,15 @@ function addPblaPoint(e) {
     this._icon.classList.remove('editing-point');
     currentDraggingMarker = null;
   });
- 
   pblaMarkers.push(marker);
- 
   if (pblaPoints.length > 1) {
     if (pblaPolygon) {
       map.removeLayer(pblaPolygon);
     }
-   
+  
     const polylinePoints = [...pblaPoints];
     pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
   }
- 
   if (pblaPoints.length >= 3) {
     document.getElementById('btn-calculate').style.display = 'block';
   }
@@ -484,20 +456,20 @@ function addPblaPoint(e) {
 function removeLastPblaPoint() {
   if (pblaPoints.length > 0) {
     pblaPoints.pop();
-   
+  
     if (pblaMarkers.length > 0) {
       map.removeLayer(pblaMarkers.pop());
     }
-   
+  
     if (pblaPolygon) {
       map.removeLayer(pblaPolygon);
       pblaPolygon = null;
     }
-   
+  
     if (pblaPoints.length > 1) {
       pblaPolygon = L.polyline(pblaPoints, { color: '#FF00FF', weight: 3 }).addTo(map);
     }
-   
+  
     if (pblaPoints.length < 3) {
       document.getElementById('btn-calculate').style.display = 'none';
     }
@@ -562,15 +534,13 @@ function resetRBLA() {
 function calculateRbla() {
   if (!tempCircle) return alert('Сначала создайте круг с помощью Р-БЛА');
   if (!flyZonesGeoJSON) return alert('Зоны не загружены');
- 
   const geometry = {
     center: centerPoint,
     radius: radiusMeters
   };
   const intersections = checkDetailedIntersections('circle', geometry);
- 
   getElevation(centerPoint.lat, centerPoint.lng).then(elevation => {
-    let content = `<b>Расчет ИВП БЛА по радиусу</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
+    let content = `<b>Р-БЛА: Радиусный план</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
    
     if (intersections.length > 0) {
       let columnCount = 1;
@@ -579,9 +549,9 @@ function calculateRbla() {
       } else if (intersections.length >= 19 && intersections.length <= 32) {
         columnCount = 3;
       }
-      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `<li>${inter.name}</li>`;
+        content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
@@ -592,7 +562,6 @@ function calculateRbla() {
     else tempCircle.setPopupContent(content);
     tempCircle.openPopup();
   });
- 
   document.getElementById('btn-calculate').style.display = 'none';
   // Блокировка дальнейшего добавления/изменения
   rblaMode = false;
@@ -603,16 +572,13 @@ function calculateRbla() {
 }
 function calculateMbla() {
   if (mblaPoints.length < 2) return alert('Недостаточно точек для маршрута');
- 
   const geometry = {
     points: mblaPoints
   };
   const intersections = checkDetailedIntersections('line', geometry);
- 
   const elevationPromises = mblaPoints.map(point => getElevation(point.lat, point.lng));
- 
   Promise.all(elevationPromises).then(elevations => {
-    let content = `<b>Расчет ИВП БЛА по маршруту</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
+    let content = `<b>М-БЛА: Маршрутный план</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
    
     content += '<b>Высоты рельефа:</b><br>';
     elevations.forEach((elevation, index) => {
@@ -626,9 +592,9 @@ function calculateMbla() {
       } else if (intersections.length >= 19 && intersections.length <= 32) {
         columnCount = 3;
       }
-      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `<li>${inter.name}</li>`;
+        content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
@@ -644,7 +610,6 @@ function calculateMbla() {
       mblaPolyline.openPopup();
     }
   });
- 
   document.getElementById('btn-calculate').style.display = 'none';
   // Блокировка дальнейшего добавления/изменения
   mblaMode = false;
@@ -659,21 +624,15 @@ function calculateMbla() {
 }
 function calculatePbla() {
   if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
- 
   const polygonPoints = [...pblaPoints, pblaPoints[0]];
- 
   const geometry = {
     points: polygonPoints
   };
   const intersections = checkDetailedIntersections('polygon', geometry);
- 
   const elevationPromises = pblaPoints.map(point => getElevation(point.lat, point.lng));
- 
   Promise.all(elevationPromises).then(elevations => {
     const avgElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
-   
-    let content = `<b>Расчет ИВП БЛА по полигону</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
-   
+    let content = `<b>П-БЛА: Плановый полигон</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
@@ -681,35 +640,30 @@ function calculatePbla() {
       } else if (intersections.length >= 19 && intersections.length <= 32) {
         columnCount = 3;
       }
-      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; list-style-type: disc;">`;
+      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        content += `<li>${inter.name}</li>`;
+        content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
       content += `<b>Пересечений нет</b>`;
     }
-   
     if (pblaPolygon) {
       map.removeLayer(pblaPolygon);
     }
-   
     pblaPolygon = L.polygon(polygonPoints, {
       color: '#FF00FF',
       weight: 3,
       fillColor: '#FF00FF',
       fillOpacity: 0.1
     }).addTo(map);
-   
     pblaPolygon.bindPopup(content);
     pblaPolygon.openPopup();
-   
     pblaMarkers.forEach(marker => {
       map.removeLayer(marker);
     });
     pblaMarkers = [];
   });
- 
   document.getElementById('btn-calculate').style.display = 'none';
   // Блокировка дальнейшего добавления/изменения
   pblaMode = false;
@@ -768,12 +722,12 @@ function setupDragHandlers() {
   map.on('mousemove', function(e) {
     if (currentDraggingMarker) {
       currentDraggingMarker.setLatLng(e.latlng);
-     
+    
       if (mblaMode) {
         const index = mblaMarkers.indexOf(currentDraggingMarker);
         if (index !== -1) {
           mblaPoints[index] = e.latlng;
-         
+        
           if (mblaPolyline) {
             map.removeLayer(mblaPolyline);
           }
@@ -783,18 +737,17 @@ function setupDragHandlers() {
         const index = pblaMarkers.indexOf(currentDraggingMarker);
         if (index !== -1) {
           pblaPoints[index] = e.latlng;
-         
+        
           if (pblaPolygon) {
             map.removeLayer(pblaPolygon);
           }
-         
+        
           const polylinePoints = [...pblaPoints];
           pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
         }
       }
     }
   });
- 
   map.on('mouseup', function() {
     if (currentDraggingMarker) {
       const latlng = currentDraggingMarker.getLatLng();
@@ -806,7 +759,7 @@ function setupDragHandlers() {
           }
         }
       });
-     
+    
       currentDraggingMarker._icon.classList.remove('editing-point');
       currentDraggingMarker = null;
     }
