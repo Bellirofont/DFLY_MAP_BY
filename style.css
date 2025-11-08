@@ -414,4 +414,4 @@ html, body, #map {
 .editing-point {
   cursor: move;
   -webkit-tap-highlight-color: transparent;
-}
+  }
