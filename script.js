@@ -28,6 +28,7 @@ let pblaPolygon = null;
 let pblaMarkers = [];
 let currentDraggingMarker = null;
 let dragStartTimeout = null;
+
 function getZoneStyle(feature) {
   const name = feature.properties?.Name || feature.properties?.name || '';
   const baseStyle = { weight: 2, opacity: 0.9, fillOpacity: 0.3 };
@@ -40,6 +41,7 @@ function getZoneStyle(feature) {
   else if (name.startsWith('ARD_') || name.startsWith('ARZ_')) return { ...baseStyle, color: '#666666', fillColor: '#c8c8c8' };
   else return { ...baseStyle, color: '#cc0000', fillColor: '#ff0000' };
 }
+
 async function getElevation(lat, lng) {
   const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
   if (elevationCache[cacheKey] !== undefined) return elevationCache[cacheKey];
@@ -70,23 +72,27 @@ async function getElevation(lat, lng) {
   });
   return pendingElevationRequest;
 }
+
 function getApproximateElevation(lat, lng) {
   const baseHeight = 160;
   const variation = Math.sin(lat * 10) * 50 + Math.cos(lng * 10) * 30;
   return Math.max(100, baseHeight + variation);
 }
+
 function initCoordinatesDisplay() {
   coordinatesDisplay = document.createElement('div');
   coordinatesDisplay.className = 'coordinates-display';
   coordinatesDisplay.innerHTML = '<div class="coordinates-content"><strong>Координаты:</strong> 53.900000, 27.566700 / <strong>Высота:</strong> 160 м.</div>';
   document.body.appendChild(coordinatesDisplay);
 }
+
 function updateCoordinatesDisplay(coords, elevation = 0) {
   if (!coordinatesDisplay) return;
   const lat = coords[0].toFixed(6);
   const lng = coords[1].toFixed(6);
   coordinatesDisplay.innerHTML = `<div class="coordinates-content"><strong>Координаты:</strong> ${lat}, ${lng} / <strong>Высота:</strong> ${Math.round(elevation)} м.</div>`;
 }
+
 function updateCenterCoordinates() {
   if (!coordinatesDisplay || !map) return;
   const center = map.getCenter();
@@ -94,6 +100,7 @@ function updateCenterCoordinates() {
     updateCoordinatesDisplay([center.lat, center.lng], elevation);
   });
 }
+
 let cursorUpdateTimeout = null;
 function updateCursorCoordinates(e) {
   if (cursorUpdateTimeout) clearTimeout(cursorUpdateTimeout);
@@ -104,10 +111,12 @@ function updateCursorCoordinates(e) {
     });
   }, 100);
 }
+
 function resetToCenterTracking() {
   isTrackingCenter = true;
   updateCenterCoordinates();
 }
+
 function initMap() {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   map = L.map('map', {
@@ -140,6 +149,7 @@ function initMap() {
   initButtons();
   createZoneToggleControl();
 }
+
 function setInteractiveRecursive(layer, interactive) {
   if (layer instanceof L.LayerGroup) {
     layer.eachLayer(subLayer => setInteractiveRecursive(subLayer, interactive));
@@ -150,6 +160,7 @@ function setInteractiveRecursive(layer, interactive) {
     }
   }
 }
+
 function loadZones() {
   fetch('Fly_Zones_BY.geojson')
     .then(res => {
@@ -200,6 +211,7 @@ function loadZones() {
       alert('⚠️ Не удалось загрузить зоны.');
     });
 }
+
 // Функция для детализированной проверки пересечений с использованием Turf.js
 function checkDetailedIntersections(geometryType, geometry) {
   if (!flyZonesGeoJSON) return [];
@@ -222,6 +234,28 @@ function checkDetailedIntersections(geometryType, geometry) {
       const circleBoundary = turf.polygonToLine(turfCircle);
       if (turf.booleanIntersects(circleBoundary, zoneTurf)) {
         details.push('граница круга пересекает зону');
+      }
+      // --- НОВАЯ ПРОВЕРКА: Зона полностью внутри круга ---
+      // Проверяем, лежит ли хотя бы одна точка зоны (например, центральная) внутри круга
+      // Используем turf.center для получения центроида зоны
+      const zoneCenter = turf.center(zoneTurf);
+      if (turf.booleanPointInPolygon(zoneCenter, turfCircle)) {
+        details.push('зона полностью внутри круга');
+      }
+      // Также можно проверить, лежит ли зона целиком внутри круга через разницу
+      // turf.difference(zoneTurf, turfCircle) вернет null, если зона полностью внутри
+      try {
+        const diff = turf.difference(zoneTurf, turfCircle);
+        if (!diff) {
+          // Зона полностью внутри круга
+          details.push('зона полностью внутри круга (через разницу)');
+        }
+      } catch(e) {
+        // turf.difference может кидать ошибки, если не пересекаются
+        // В этом случае проверим через booleanWithin
+        if (turf.booleanWithin(zoneTurf, turfCircle)) {
+          details.push('зона полностью внутри круга (через booleanWithin)');
+        }
       }
     } else if (geometryType === 'line') {
       // Для M-BLA: линия
@@ -270,178 +304,244 @@ function checkDetailedIntersections(geometryType, geometry) {
   });
   return intersections;
 }
+
 function disableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
     zoneLayers[prefix].eachLayer(geoLayer => {
       setInteractiveRecursive(geoLayer, false);
+      geoLayer.off('click');
     });
   });
 }
+
 function enableZoneInteractivity() {
   ZONE_PREFIXES.forEach(prefix => {
     zoneLayers[prefix].eachLayer(geoLayer => {
-      const name = geoLayer.feature.properties.Name || geoLayer.feature.properties.name || '';
-      const isLargeZone = name.startsWith('RB') || name.startsWith('MIL');
-      setInteractiveRecursive(geoLayer, !isLargeZone);
+      if (geoLayer.getPopup()) {
+        setInteractiveRecursive(geoLayer, true);
+        geoLayer.on('click', function(e) {
+          this.openPopup();
+        });
+      } else {
+        setInteractiveRecursive(geoLayer, false);
+      }
     });
   });
 }
+
 function initButtons() {
   document.getElementById('btn-rbla').onclick = startRbla;
   document.getElementById('btn-mbla').onclick = startMbla;
   document.getElementById('btn-pbla').onclick = startPbla;
   document.getElementById('btn-gps').onclick = getGpsLocation;
   document.getElementById('btn-operator').onclick = placeOperatorMarker;
-  document.getElementById('btn-calculate').onclick = () => {
-    if (currentMode === 'rbla') calculateRbla();
-    else if (currentMode === 'mbla') calculateMbla();
-    else if (currentMode === 'pbla') calculatePbla();
-  };
-  document.getElementById('btn-cnl').onclick = clearAllUserObjects;
+  document.getElementById('btn-cnl').onclick = cancelMode;
   document.getElementById('btn-rld').onclick = reloadMap;
-
-  // Добавляем обработчик для dropdown меню (для корректной работы на мобильных)
-  const dropdownBtn = document.querySelector('.dropdown-btn');
-  const dropdownContent = document.querySelector('.dropdown-content');
-  dropdownBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
-  });
-  document.addEventListener('click', (e) => {
-    if (!dropdownBtn.contains(e.target) && !dropdownContent.contains(e.target)) {
-      dropdownContent.style.display = 'none';
+  document.getElementById('btn-calculate').onclick = () => {
+    if (tempCircle && radiusMeters) {
+      calculateRbla();
+    } else if (mblaPoints.length >= 2) {
+      calculateMbla();
+    } else if (pblaPoints.length >= 3) {
+      calculatePbla();
+    } else {
+      alert('Недостаточно данных для расчета. Создайте объект полета сначала.');
     }
-  });
+  };
 }
+
 function startRbla() {
-  if (currentMode && currentMode !== 'rbla') {
-    cancelMode();
-  }
+  if (currentMode) cancelMode();
   rblaMode = true;
   currentMode = 'rbla';
   document.getElementById('btn-rbla').disabled = true;
-  document.getElementById('btn-mbla').disabled = true;
-  document.getElementById('btn-pbla').disabled = true;
-  map.dragging.disable();
-  map.on('click', setCenterPoint);
-  map.on('mousemove', drawTempLine);
   disableZoneInteractivity();
-  alert('Выберите центр круга кликом на карту');
+  map.dragging.disable();
+  map.once('click', (e) => {
+    centerPoint = e.latlng;
+    map.on('mousemove', drawTempLine);
+    map.once('click', finishRadius);
+  });
 }
-function setCenterPoint(e) {
-  centerPoint = e.latlng;
-  L.marker(centerPoint, { icon: L.divIcon({ className: 'center-marker', html: '<div>+</div>' }) }).addTo(map);
-  map.off('click', setCenterPoint);
-  map.on('click', finishRadius);
-  alert('Теперь кликните для завершения радиуса');
-}
+
 function startMbla() {
-  if (currentMode && currentMode !== 'mbla') {
-    cancelMode();
-  }
+  if (currentMode) cancelMode();
   mblaMode = true;
   currentMode = 'mbla';
   document.getElementById('btn-mbla').disabled = true;
-  document.getElementById('btn-rbla').disabled = true;
-  document.getElementById('btn-pbla').disabled = true;
-  map.on('click', addMblaPoint);
   disableZoneInteractivity();
-  alert('Добавляйте точки маршрута кликами. Для расчета нажмите "Рассчитать"');
+  map.dragging.disable();
+  map.on('click', addMblaPoint);
 }
-function addMblaPoint(e) {
-  mblaPoints.push(e.latlng);
-  const marker = L.marker(e.latlng, { draggable: true }).addTo(map);
-  mblaMarkers.push(marker);
-  getElevation(e.latlng.lat, e.latlng.lng).then(elevation => {
-    marker.bindPopup(`Точка ${mblaPoints.length}<br>Высота: ${Math.round(elevation)} м.`);
-  });
-  if (mblaPolyline) map.removeLayer(mblaPolyline);
-  mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
-  document.getElementById('btn-calculate').style.display = 'block';
 
-  // Обработчики для перетаскивания
-  marker.on('mousedown', function() {
-    currentDraggingMarker = marker;
-    marker._icon.classList.add('editing-point');
-  });
+function startPbla() {
+  if (currentMode) cancelMode();
+  pblaMode = true;
+  currentMode = 'pbla';
+  document.getElementById('btn-pbla').disabled = true;
+  disableZoneInteractivity();
+  map.dragging.disable();
+  map.on('click', addPblaPoint);
 }
+
+function addMblaPoint(e) {
+  const latlng = e.latlng;
+  mblaPoints.push(latlng);
+  const marker = L.marker(latlng, {
+    icon: L.divIcon({
+      className: 'mbla-marker',
+      html: `<div class="marker-number">${mblaPoints.length}</div>`,
+      iconSize: [25, 25],
+      iconAnchor: [12, 12]
+    })
+  }).addTo(map);
+  marker.on('mousedown', function() {
+    dragStartTimeout = setTimeout(() => {
+      this._icon.classList.add('editing-point');
+      currentDraggingMarker = this;
+    }, 500);
+  });
+  marker.on('mouseup', function() {
+    if (dragStartTimeout) {
+      clearTimeout(dragStartTimeout);
+      dragStartTimeout = null;
+    }
+    this._icon.classList.remove('editing-point');
+    currentDraggingMarker = null;
+  });
+  mblaMarkers.push(marker);
+  if (mblaPoints.length > 1) {
+    if (mblaPolyline) {
+      map.removeLayer(mblaPolyline);
+    }
+    mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
+    document.getElementById('btn-calculate').style.display = 'block';
+  }
+}
+
+function removeLastMblaPoint() {
+  if (mblaPoints.length > 0) {
+    mblaPoints.pop();
+
+    if (mblaMarkers.length > 0) {
+      map.removeLayer(mblaMarkers.pop());
+    }
+
+    if (mblaPolyline) {
+      map.removeLayer(mblaPolyline);
+      mblaPolyline = null;
+    }
+
+    if (mblaPoints.length > 1) {
+      mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
+    } else {
+      document.getElementById('btn-calculate').style.display = 'none';
+    }
+  }
+}
+
 function clearMbla() {
   mblaPoints = [];
-  if (mblaPolyline) map.removeLayer(mblaPolyline);
-  mblaPolyline = null;
   mblaMarkers.forEach(marker => map.removeLayer(marker));
   mblaMarkers = [];
+  if (mblaPolyline) {
+    map.removeLayer(mblaPolyline);
+    mblaPolyline = null;
+  }
 }
+
 function resetMbla() {
   mblaMode = false;
   document.getElementById('btn-mbla').disabled = false;
-  document.getElementById('btn-rbla').disabled = false;
-  document.getElementById('btn-pbla').disabled = false;
   clearMbla();
   map.off('click', addMblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
   enableZoneInteractivity();
 }
-function startPbla() {
-  if (currentMode && currentMode !== 'pbla') {
-    cancelMode();
-  }
-  pblaMode = true;
-  currentMode = 'pbla';
-  document.getElementById('btn-pbla').disabled = true;
-  document.getElementById('btn-rbla').disabled = true;
-  document.getElementById('btn-mbla').disabled = true;
-  map.on('click', addPblaPoint);
-  disableZoneInteractivity();
-  alert('Добавляйте точки полигона кликами. Для расчета нажмите "Рассчитать"');
-}
-function addPblaPoint(e) {
-  pblaPoints.push(e.latlng);
-  const marker = L.marker(e.latlng, { draggable: true }).addTo(map);
-  pblaMarkers.push(marker);
-  getElevation(e.latlng.lat, e.latlng.lng).then(elevation => {
-    marker.bindPopup(`Точка ${pblaPoints.length}<br>Высота: ${Math.round(elevation)} м.`);
-  });
-  if (pblaPolygon) map.removeLayer(pblaPolygon);
-  const polylinePoints = [...pblaPoints];
-  pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
-  document.getElementById('btn-calculate').style.display = 'block';
 
-  // Обработчики для перетаскивания
+function addPblaPoint(e) {
+  const latlng = e.latlng;
+  pblaPoints.push(latlng);
+  const marker = L.marker(latlng, {
+    icon: L.divIcon({
+      className: 'pbla-marker',
+      html: `<div class="marker-number">${pblaPoints.length}</div>`,
+      iconSize: [25, 25],
+      iconAnchor: [12, 12]
+    })
+  }).addTo(map);
   marker.on('mousedown', function() {
-    currentDraggingMarker = marker;
-    marker._icon.classList.add('editing-point');
+    dragStartTimeout = setTimeout(() => {
+      this._icon.classList.add('editing-point');
+      currentDraggingMarker = this;
+    }, 500);
   });
+  marker.on('mouseup', function() {
+    if (dragStartTimeout) {
+      clearTimeout(dragStartTimeout);
+      dragStartTimeout = null;
+    }
+    this._icon.classList.remove('editing-point');
+    currentDraggingMarker = null;
+  });
+  pblaMarkers.push(marker);
+  if (pblaPoints.length > 1) {
+    if (pblaPolygon) {
+      map.removeLayer(pblaPolygon);
+    }
+
+    const polylinePoints = [...pblaPoints];
+    pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
+  }
+  if (pblaPoints.length >= 3) {
+    document.getElementById('btn-calculate').style.display = 'block';
+  }
 }
+
+function removeLastPblaPoint() {
+  if (pblaPoints.length > 0) {
+    pblaPoints.pop();
+
+    if (pblaMarkers.length > 0) {
+      map.removeLayer(pblaMarkers.pop());
+    }
+
+    if (pblaPolygon) {
+      map.removeLayer(pblaPolygon);
+      pblaPolygon = null;
+    }
+
+    if (pblaPoints.length > 1) {
+      pblaPolygon = L.polyline(pblaPoints, { color: '#FF00FF', weight: 3 }).addTo(map);
+    }
+
+    if (pblaPoints.length < 3) {
+      document.getElementById('btn-calculate').style.display = 'none';
+    }
+  }
+}
+
 function clearPbla() {
   pblaPoints = [];
-  if (pblaPolygon) map.removeLayer(pblaPolygon);
-  pblaPolygon = null;
   pblaMarkers.forEach(marker => map.removeLayer(marker));
   pblaMarkers = [];
+  if (pblaPolygon) {
+    map.removeLayer(pblaPolygon);
+    pblaPolygon = null;
+  }
 }
+
 function resetPbla() {
   pblaMode = false;
   document.getElementById('btn-pbla').disabled = false;
-  document.getElementById('btn-rbla').disabled = false;
-  document.getElementById('btn-mbla').disabled = false;
   clearPbla();
   map.off('click', addPblaPoint);
   map.dragging.enable();
   document.getElementById('btn-calculate').style.display = 'none';
   enableZoneInteractivity();
 }
-function clearRbla() {
-  if (tempCircle) map.removeLayer(tempCircle);
-  tempCircle = null;
-  if (tempLine) map.removeLayer(tempLine);
-  tempLine = null;
-  if (tempLabel) map.removeLayer(tempLabel);
-  tempLabel = null;
-  centerPoint = null;
-  radiusMeters = null;
-}
+
 function drawTempLine(e) {
   if (!rblaMode || !centerPoint) return;
   const distance = map.distance(centerPoint, e.latlng);
@@ -457,6 +557,7 @@ function drawTempLine(e) {
     })
   }).addTo(map);
 }
+
 function finishRadius(e) {
   if (!rblaMode) return;
   const distance = map.distance(centerPoint, e.latlng);
@@ -470,21 +571,18 @@ function finishRadius(e) {
   if (tempCircle) map.removeLayer(tempCircle);
   tempCircle = L.circle(centerPoint, { radius: radiusMeters, color: 'red', fillOpacity: 0.2, weight: 2 }).addTo(map);
   document.getElementById('btn-calculate').style.display = 'block';
-  map.off('click', finishRadius);
-  map.off('mousemove', drawTempLine);
+  resetRBLA();
 }
+
 function resetRBLA() {
   rblaMode = false;
   const btn = document.getElementById('btn-rbla');
   if (btn) btn.disabled = false;
-  document.getElementById('btn-mbla').disabled = false;
-  document.getElementById('btn-pbla').disabled = false;
   map.dragging.enable();
   map.off('mousemove', drawTempLine);
-  map.off('click', setCenterPoint);
-  map.off('click', finishRadius);
   enableZoneInteractivity();
 }
+
 function calculateRbla() {
   if (!tempCircle) return alert('Сначала создайте круг с помощью Р-БЛА');
   if (!flyZonesGeoJSON) return alert('Зоны не загружены');
@@ -495,7 +593,7 @@ function calculateRbla() {
   const intersections = checkDetailedIntersections('circle', geometry);
   getElevation(centerPoint.lat, centerPoint.lng).then(elevation => {
     let content = `<b>Расчет ИВП БЛА по радиусу</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
-   
+
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
@@ -505,23 +603,27 @@ function calculateRbla() {
       }
       content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
+        // Выводим только имя зоны, без деталей, чтобы не перегружать
         content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
       content += `<b>Пересечений нет</b>`;
     }
-   
+
     if (!tempCircle.getPopup()) tempCircle.bindPopup(content);
     else tempCircle.setPopupContent(content);
     tempCircle.openPopup();
   });
   document.getElementById('btn-calculate').style.display = 'none';
-  // Блокировка дальнейшего добавления/изменения, но карта остается интерактивной
+  // Блокировка дальнейшего добавления/изменения
   rblaMode = false;
+  map.off('mousemove', drawTempLine);
+  map.off('click', finishRadius);
   currentMode = null;
-  resetRBLA(); // Вызываем reset для восстановления интерактивности
+  enableZoneInteractivity();
 }
+
 function calculateMbla() {
   if (mblaPoints.length < 2) return alert('Недостаточно точек для маршрута');
   const geometry = {
@@ -531,12 +633,12 @@ function calculateMbla() {
   const elevationPromises = mblaPoints.map(point => getElevation(point.lat, point.lng));
   Promise.all(elevationPromises).then(elevations => {
     let content = `<b>Расчет ИВП БЛА по маршруту</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
-   
+
     content += '<b>Высоты рельефа:</b><br>';
     elevations.forEach((elevation, index) => {
       content += `• Точка ${index + 1}: ${Math.round(elevation)} м<br>`;
     });
-   
+
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
@@ -552,7 +654,7 @@ function calculateMbla() {
     } else {
       content += `<b>Пересечений нет</b>`;
     }
-   
+
     if (mblaPolyline) {
       if (!mblaPolyline.getPopup()) {
         mblaPolyline.bindPopup(content);
@@ -563,23 +665,18 @@ function calculateMbla() {
     }
   });
   document.getElementById('btn-calculate').style.display = 'none';
-  // Блокировка дальнейшего добавления/изменения, но карта остается интерактивной
+  // Блокировка дальнейшего добавления/изменения
   mblaMode = false;
+  map.off('click', addMblaPoint);
   currentDraggingMarker = null;
   mblaMarkers.forEach(marker => {
     marker.off('mousedown');
     marker.off('mouseup');
-    marker.dragging.disable(); // Отключаем драг после расчета
   });
-  map.off('click', addMblaPoint);
   currentMode = null;
-  resetMbla(); // Вызываем reset для восстановления интерактивности (clear не вызывается, чтобы объекты остались)
-  clearMbla(); // Нет, не clear - оставляем объекты, но блокируем редактирование
-  // В resetMbla() есть clearMbla(), так что переопределяем: удаляем вызов clear в reset, или вызываем частично
-  // Лучше: в calculate не вызывать clear, только off handlers и enable interactivity
-  map.dragging.enable();
   enableZoneInteractivity();
 }
+
 function calculatePbla() {
   if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
   const polygonPoints = [...pblaPoints, pblaPoints[0]];
@@ -623,19 +720,18 @@ function calculatePbla() {
     pblaMarkers = [];
   });
   document.getElementById('btn-calculate').style.display = 'none';
-  // Блокировка дальнейшего добавления/изменения, но карта остается интерактивной
+  // Блокировка дальнейшего добавления/изменения
   pblaMode = false;
+  map.off('click', addPblaPoint);
   currentDraggingMarker = null;
   pblaMarkers.forEach(marker => {
     marker.off('mousedown');
     marker.off('mouseup');
-    marker.dragging.disable(); // Отключаем драг после расчета
   });
-  map.off('click', addPblaPoint);
   currentMode = null;
-  map.dragging.enable();
   enableZoneInteractivity();
 }
+
 function createZoneToggleControl() {
   const container = document.createElement('div');
   container.style.cssText = `
@@ -678,16 +774,17 @@ function createZoneToggleControl() {
   container.appendChild(menu);
   document.body.appendChild(container);
 }
+
 function setupDragHandlers() {
   map.on('mousemove', function(e) {
     if (currentDraggingMarker) {
       currentDraggingMarker.setLatLng(e.latlng);
-    
+
       if (mblaMode) {
         const index = mblaMarkers.indexOf(currentDraggingMarker);
         if (index !== -1) {
           mblaPoints[index] = e.latlng;
-        
+
           if (mblaPolyline) {
             map.removeLayer(mblaPolyline);
           }
@@ -697,11 +794,11 @@ function setupDragHandlers() {
         const index = pblaMarkers.indexOf(currentDraggingMarker);
         if (index !== -1) {
           pblaPoints[index] = e.latlng;
-        
+
           if (pblaPolygon) {
             map.removeLayer(pblaPolygon);
           }
-        
+
           const polylinePoints = [...pblaPoints];
           pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
         }
@@ -719,15 +816,20 @@ function setupDragHandlers() {
           }
         }
       });
-    
+
       currentDraggingMarker._icon.classList.remove('editing-point');
       currentDraggingMarker = null;
     }
   });
 }
+
 function cancelMode() {
   if (currentMode === 'rbla') {
     resetRBLA();
+    if (tempCircle) map.removeLayer(tempCircle);
+    tempCircle = null;
+    centerPoint = null;
+    radiusMeters = null;
   } else if (currentMode === 'mbla') {
     resetMbla();
   } else if (currentMode === 'pbla') {
@@ -737,34 +839,11 @@ function cancelMode() {
   currentMode = null;
   enableZoneInteractivity();
 }
-// Новая функция для очистки всех пользовательских объектов без перезагрузки
-function clearAllUserObjects() {
-  clearRbla();
-  clearMbla();
-  clearPbla();
-  if (operatorMarker) {
-    map.removeLayer(operatorMarker);
-    operatorMarker = null;
-  }
-  // Очищаем любые другие маркеры или слои, если есть
-  currentMode = null;
-  rblaMode = false;
-  mblaMode = false;
-  pblaMode = false;
-  document.getElementById('btn-rbla').disabled = false;
-  document.getElementById('btn-mbla').disabled = false;
-  document.getElementById('btn-pbla').disabled = false;
-  document.getElementById('btn-calculate').style.display = 'none';
-  map.dragging.enable();
-  enableZoneInteractivity();
-  map.off('click');
-  map.off('mousemove');
-  // Закрываем меню после нажатия
-  document.querySelector('.dropdown-content').style.display = 'none';
-}
+
 function reloadMap() {
   location.reload();
 }
+
 function getGpsLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(position => {
@@ -779,6 +858,7 @@ function getGpsLocation() {
     alert('GPS не поддерживается');
   }
 }
+
 function placeOperatorMarker() {
   const center = map.getCenter();
   if (operatorMarker) map.removeLayer(operatorMarker);
@@ -791,6 +871,7 @@ function placeOperatorMarker() {
     })
   }).addTo(map);
 }
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupDragHandlers();
