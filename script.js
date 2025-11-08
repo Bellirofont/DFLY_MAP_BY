@@ -11,6 +11,7 @@ let tempCircle = null;
 let radiusMeters = null;
 let coordinatesDisplay = null;
 let operatorMarker = null;
+let rblaCenterMarker = null; // Глобальная переменная для маркера центра
 let elevationCache = {};
 let lastElevationRequest = 0;
 const ELEVATION_REQUEST_DELAY = 1000;
@@ -359,8 +360,55 @@ function startRbla() {
   map.dragging.disable();
   map.once('click', (e) => {
     centerPoint = e.latlng;
+    // Создаем маркер центра
+    createRblaCenterMarker(centerPoint);
     map.on('mousemove', drawTempLine);
     map.once('click', finishRadius);
+  });
+}
+
+function createRblaCenterMarker(latlng) {
+  if (rblaCenterMarker) {
+    map.removeLayer(rblaCenterMarker);
+  }
+  rblaCenterMarker = L.marker(latlng, {
+    icon: L.divIcon({
+      className: 'rbla-center-marker',
+      html: `<div class="rbla-center-marker-inner">C</div><div class="rbla-center-label">${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}</div>`,
+      iconSize: [30, 65], // Учитываем высоту метки
+      iconAnchor: [15, 15] // Центр на верхнем маркере
+    }),
+    draggable: true // Включаем перетаскивание
+  }).addTo(map);
+
+  // Обработчик начала перетаскивания
+  rblaCenterMarker.on('dragstart', function() {
+    if (rblaMode) {
+      this._icon.classList.add('editing-point');
+    }
+  });
+
+  // Обработчик окончания перетаскивания
+  rblaCenterMarker.on('dragend', function() {
+    const newLatLng = this.getLatLng();
+    centerPoint = newLatLng;
+    // Обновляем координаты в метке
+    this.setIcon(L.divIcon({
+      className: 'rbla-center-marker',
+      html: `<div class="rbla-center-marker-inner">C</div><div class="rbla-center-label">${newLatLng.lat.toFixed(6)}, ${newLatLng.lng.toFixed(6)}</div>`,
+      iconSize: [30, 65],
+      iconAnchor: [15, 15]
+    }));
+    // Обновляем круг, если он уже создан
+    if (tempCircle) {
+      tempCircle.setLatLng(newLatLng);
+    }
+    // Обновляем линию-радиус, если она рисуется
+    if (tempLine && tempLabel) {
+      const currentEndLatLng = tempLine.getLatLngs()[1];
+      tempLine.setLatLngs([newLatLng, currentEndLatLng]);
+    }
+    this._icon.classList.remove('editing-point');
   });
 }
 
@@ -828,6 +876,8 @@ function cancelMode() {
     resetRBLA();
     if (tempCircle) map.removeLayer(tempCircle);
     tempCircle = null;
+    if (rblaCenterMarker) map.removeLayer(rblaCenterMarker);
+    rblaCenterMarker = null;
     centerPoint = null;
     radiusMeters = null;
   } else if (currentMode === 'mbla') {
