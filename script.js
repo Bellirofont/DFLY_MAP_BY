@@ -441,22 +441,42 @@ function addMblaPoint(e) {
       html: `<div class="marker-number">${mblaPoints.length}</div>`,
       iconSize: [25, 25],
       iconAnchor: [12, 12]
-    })
+    }),
+    draggable: true // Включаем перетаскивание для маркера
   }).addTo(map);
-  marker.on('mousedown', function() {
-    dragStartTimeout = setTimeout(() => {
+
+  // Обработчик начала перетаскивания
+  marker.on('dragstart', function() {
+    if (mblaMode) {
       this._icon.classList.add('editing-point');
       currentDraggingMarker = this;
-    }, 500);
-  });
-  marker.on('mouseup', function() {
-    if (dragStartTimeout) {
-      clearTimeout(dragStartTimeout);
-      dragStartTimeout = null;
     }
-    this._icon.classList.remove('editing-point');
-    currentDraggingMarker = null;
   });
+
+  // Обработчик окончания перетаскивания
+  marker.on('dragend', function() {
+    if (mblaMode && currentDraggingMarker) {
+      const newLatLng = this.getLatLng();
+      const index = mblaMarkers.indexOf(currentDraggingMarker);
+      if (index !== -1) {
+        mblaPoints[index] = newLatLng;
+
+        // Обновляем линию
+        if (mblaPolyline) {
+          map.removeLayer(mblaPolyline);
+        }
+        mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
+
+        // Обновляем popup с высотой
+        getElevation(newLatLng.lat, newLatLng.lng).then(elevation => {
+          this.bindPopup(`Точка ${index + 1}<br>Координаты: ${newLatLng.lat.toFixed(6)}, ${newLatLng.lng.toFixed(6)}<br>Высота: ${Math.round(elevation)} м.`);
+        });
+      }
+      this._icon.classList.remove('editing-point');
+      currentDraggingMarker = null;
+    }
+  });
+
   mblaMarkers.push(marker);
   if (mblaPoints.length > 1) {
     if (mblaPolyline) {
@@ -718,8 +738,8 @@ function calculateMbla() {
   map.off('click', addMblaPoint);
   currentDraggingMarker = null;
   mblaMarkers.forEach(marker => {
-    marker.off('mousedown');
-    marker.off('mouseup');
+    marker.off('dragstart');
+    marker.off('dragend');
   });
   currentMode = null;
   enableZoneInteractivity();
@@ -824,51 +844,9 @@ function createZoneToggleControl() {
 }
 
 function setupDragHandlers() {
-  map.on('mousemove', function(e) {
-    if (currentDraggingMarker) {
-      currentDraggingMarker.setLatLng(e.latlng);
-
-      if (mblaMode) {
-        const index = mblaMarkers.indexOf(currentDraggingMarker);
-        if (index !== -1) {
-          mblaPoints[index] = e.latlng;
-
-          if (mblaPolyline) {
-            map.removeLayer(mblaPolyline);
-          }
-          mblaPolyline = L.polyline(mblaPoints, { color: '#0000FF', weight: 3 }).addTo(map);
-        }
-      } else if (pblaMode) {
-        const index = pblaMarkers.indexOf(currentDraggingMarker);
-        if (index !== -1) {
-          pblaPoints[index] = e.latlng;
-
-          if (pblaPolygon) {
-            map.removeLayer(pblaPolygon);
-          }
-
-          const polylinePoints = [...pblaPoints];
-          pblaPolygon = L.polyline(polylinePoints, { color: '#FF00FF', weight: 3 }).addTo(map);
-        }
-      }
-    }
-  });
-  map.on('mouseup', function() {
-    if (currentDraggingMarker) {
-      const latlng = currentDraggingMarker.getLatLng();
-      getElevation(latlng.lat, latlng.lng).then(elevation => {
-        if (mblaMode) {
-          const index = mblaMarkers.indexOf(currentDraggingMarker);
-          if (index !== -1) {
-            currentDraggingMarker.bindPopup(`Точка ${index + 1}<br>Высота: ${Math.round(elevation)} м.`);
-          }
-        }
-      });
-
-      currentDraggingMarker._icon.classList.remove('editing-point');
-      currentDraggingMarker = null;
-    }
-  });
+  // Убрана глобальная логика для M-BLA, так как она теперь в addMblaPoint
+  // map.on('mousemove', function(e) { ... }
+  // map.on('mouseup', function() { ... }
 }
 
 function cancelMode() {
