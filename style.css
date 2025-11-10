@@ -476,7 +476,7 @@ html, body, #map {
 .rbla-center-label::before {
   content: '';
   position: absolute;
-  bottom: 10px; /* Располагаем стрелку под меткой (а не над ней) */
+  bottom: -10px; /* Располагаем стрелку под меткой (а не над ней) */
   left: 50%;
   transform: translateX(-50%);
   border-left: 6px solid transparent;
