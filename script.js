@@ -854,7 +854,7 @@ function calculateMbla() {
 // === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА П-БЛА ===
 function calculatePbla() {
   if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
-  const polygonPoints = [...pblaPoints, pblaPoints[0]];
+  const polygonPoints = [...pblaPoints, pblaPoints[0]]; // Замыкаем полигон
   const geometry = {
     points: polygonPoints
   };
@@ -864,8 +864,22 @@ function calculatePbla() {
     // Рассчитываем среднюю высоту рельефа для точек полигона
     const avgTerrainElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
     const hpfl = roundUpTo50(avgTerrainElevation + flightHeightInputValue);
+    const hpflInDecameters = hpfl / 10; // Высота в "десятках метра"
 
-    let content = `<b>Расчет ИВП БЛА по полигону</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота рельефа:</b> ${Math.round(avgTerrainElevation)} м.<br><b>HP-FL:</b> ${hpfl} м.<br>`;
+    // --- НОВОЕ: Генерация строки для Copy-T ---
+    const copyTText = pblaPoints.map(p => `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`).join('; ') 
+                             + `; ${pblaPoints[0].lat.toFixed(6)}, ${pblaPoints[0].lng.toFixed(6)}`;
+
+    // --- НОВОЕ: Генерация строки для Copy-BAN ---
+    const banCoords = pblaPoints.map(p => decimalToDegreesMinutes(p.lat, p.lng)).join(' ');
+    const heightFormatted = padZero(Math.floor(hpflInDecameters), 4);
+    const copyBanText = `ПОЛЕТПОЛИГОН/${banCoords}/М0000М${heightFormatted}/`;
+
+    let content = `<div class="rbla-result-popup">
+                     <h3>Расчет ИВП БЛА по полигону</h3>
+                     <p><b>Точек полигона:</b> ${pblaPoints.length}</p>
+                     <p><b>Средняя высота рельефа:</b> ${Math.round(avgTerrainElevation)} м.</p>
+                     <p><b>HP-FL:</b> ${hpfl} м. (${hpflInDecameters} дам.)</p>`;
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
@@ -873,14 +887,20 @@ function calculatePbla() {
       } else if (intersections.length >= 19 && intersections.length <= 32) {
         columnCount = 3;
       }
-      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
+      content += `<p><b>Пересечения зон:</b></p><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
         content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
-      content += `<b>Пересечений нет</b>`;
+      content += `<p><b>Пересечений нет</b></p>`;
     }
+    content += `<div class="popup-buttons">
+                   <button id="btn-copy-t">Copy-T</button>
+                   <button id="btn-copy-ban">Copy-BAN</button>
+                 </div>
+               </div>`;
+
     if (pblaPolygon) {
       map.removeLayer(pblaPolygon);
     }
@@ -892,6 +912,27 @@ function calculatePbla() {
     }).addTo(map);
     pblaPolygon.bindPopup(content);
     pblaPolygon.openPopup();
+
+    // === НОВОЕ: Привязка обработчиков к кнопкам в попапе ===
+    setTimeout(() => { // Ждем, пока попап откроется и DOM обновится
+        document.getElementById('btn-copy-t').addEventListener('click', () => {
+            navigator.clipboard.writeText(copyTText).then(() => {
+                alert('Координаты скопированы в буфер обмена');
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+                alert('Ошибка копирования');
+            });
+        });
+        document.getElementById('btn-copy-ban').addEventListener('click', () => {
+            navigator.clipboard.writeText(copyBanText).then(() => {
+                alert('Текст BAN скопирован в буфер обмена');
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+                alert('Ошибка копирования');
+            });
+        });
+    }, 100);
+
     pblaMarkers.forEach(marker => {
       map.removeLayer(marker);
     });
