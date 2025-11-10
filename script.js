@@ -851,15 +851,17 @@ function calculateMbla() {
   enableZoneInteractivity();
 }
 
-// === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА П-БЛА ===
+// === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА П-БЛА С УДАЛЕНИЕМ ДУБЛИКАТОВ И УВЕДОМЛЕНИЕМ ===
 function calculatePbla() {
   if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
-  const polygonPoints = [...pblaPoints, pblaPoints[0]]; // Замыкаем полигон
+  
+  const polygonPoints = [...pblaPoints, pblaPoints[0]]; // Замыкаем полигон для расчета
   const geometry = {
     points: polygonPoints
   };
   const intersections = checkDetailedIntersections('polygon', geometry);
   const elevationPromises = pblaPoints.map(point => getElevation(point.lat, point.lng));
+  
   Promise.all(elevationPromises).then(elevations => {
     // Рассчитываем среднюю высоту рельефа для точек полигона
     const avgTerrainElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
@@ -870,10 +872,32 @@ function calculatePbla() {
     const copyTText = pblaPoints.map(p => `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`).join('; ') 
                              + `; ${pblaPoints[0].lat.toFixed(6)}, ${pblaPoints[0].lng.toFixed(6)}`;
 
-    // --- НОВОЕ: Генерация строки для Copy-BAN ---
-    const banCoords = pblaPoints.map(p => decimalToDegreesMinutes(p.lat, p.lng)).join(' ');
+    // --- КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Удаление последовательных дубликатов ТОЛЬКО для Copy-BAN ---
+    const rawBanCoords = pblaPoints.map(p => decimalToDegreesMinutes(p.lat, p.lng));
+    
+    // Создаем новый массив без последовательных дубликатов
+    const filteredBanCoords = [rawBanCoords[0]]; // Всегда добавляем первую точку
+    let duplicateCount = 0;
+
+    for (let i = 1; i < rawBanCoords.length; i++) {
+      if (rawBanCoords[i] === rawBanCoords[i - 1]) {
+        duplicateCount++; // Увеличиваем счетчик при нахождении дубликата
+      } else {
+        filteredBanCoords.push(rawBanCoords[i]); // Добавляем только если точка уникальна по сравнению с предыдущей
+      }
+    }
+
+    // Формируем строку для копирования
+    const banCoordsString = filteredBanCoords.join(' ');
     const heightFormatted = padZero(Math.floor(hpflInDecameters), 4);
-    const copyBanText = `ПОЛЕТПОЛИГОН/${banCoords}/М0000М${heightFormatted}/`;
+    const copyBanText = `ПОЛЕТПОЛИГОН/${banCoordsString}/М0000М${heightFormatted}/`;
+
+    // Отправляем уведомление о дубликатах, если они были
+    if (duplicateCount > 0) {
+      setTimeout(() => { // Используем таймаут, чтобы уведомление не мешало попапу
+        alert(`Удалено ${duplicateCount} ${getPluralForm(duplicateCount, 'дубликат', 'дубликата', 'дубликатов')} координат`);
+      }, 500);
+    }
 
     let content = `<div class="rbla-result-popup">
                      <h3>Расчет ИВП БЛА по полигону</h3>
@@ -904,6 +928,7 @@ function calculatePbla() {
     if (pblaPolygon) {
       map.removeLayer(pblaPolygon);
     }
+    // ВСЕГДА используем оригинальные pblaPoints (без фильтрации) для отрисовки полигона
     pblaPolygon = L.polygon(polygonPoints, {
       color: '#FF00FF',
       weight: 3,
@@ -914,32 +939,34 @@ function calculatePbla() {
     pblaPolygon.openPopup();
 
     // === НОВОЕ: Привязка обработчиков к кнопкам в попапе ===
-    setTimeout(() => { // Ждем, пока попап откроется и DOM обновится
-        document.getElementById('btn-copy-t').addEventListener('click', () => {
-            navigator.clipboard.writeText(copyTText).then(() => {
-                alert('Координаты скопированы в буфер обмена');
-            }).catch(err => {
-                console.error('Ошибка копирования: ', err);
-                alert('Ошибка копирования');
-            });
+    setTimeout(() => {
+      document.getElementById('btn-copy-t').addEventListener('click', () => {
+        navigator.clipboard.writeText(copyTText).then(() => {
+          alert('Координаты скопированы в буфер обмена');
+        }).catch(err => {
+          console.error('Ошибка копирования: ', err);
+          alert('Ошибка копирования');
         });
-        document.getElementById('btn-copy-ban').addEventListener('click', () => {
-            navigator.clipboard.writeText(copyBanText).then(() => {
-                alert('Текст BAN скопирован в буфер обмена');
-            }).catch(err => {
-                console.error('Ошибка копирования: ', err);
-                alert('Ошибка копирования');
-            });
+      });
+      document.getElementById('btn-copy-ban').addEventListener('click', () => {
+        navigator.clipboard.writeText(copyBanText).then(() => {
+          alert('Текст BAN скопирован в буфер обмена');
+        }).catch(err => {
+          console.error('Ошибка копирования: ', err);
+          alert('Ошибка копирования');
         });
+      });
     }, 100);
 
+    // Очищаем маркеры после расчета
     pblaMarkers.forEach(marker => {
       map.removeLayer(marker);
     });
     pblaMarkers = [];
   });
+
+  // Деактивация режима
   document.getElementById('btn-calculate').style.display = 'none';
-  // Блокировка дальнейшего добавления/изменения
   pblaMode = false;
   map.off('click', addPblaPoint);
   currentDraggingMarker = null;
@@ -949,6 +976,18 @@ function calculatePbla() {
   });
   currentMode = null;
   enableZoneInteractivity();
+}
+
+// Вспомогательная функция для правильного склонения слов
+function getPluralForm(number, one, two, five) {
+  const n = Math.abs(number);
+  if (n % 10 === 1 && n % 100 !== 11) {
+    return one;
+  } else if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
+    return two;
+  } else {
+    return five;
+  }
 }
 
 function createZoneToggleControl() {
