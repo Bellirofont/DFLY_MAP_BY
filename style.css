@@ -472,22 +472,23 @@ html, body, #map {
   z-index: 1001; /* Выше других элементов */
 }
 
-/* Стиль для стрелки, указывающей на метку координат */
+/* Стиль для стрелки, указывающей на метку координат (должна быть НАД меткой ПОД маркером) */
 .rbla-center-label::before {
   content: '';
   position: absolute;
-  top: -10px; /* Располагаем стрелку над меткой */
+  bottom: -10px; /* Располагаем стрелку под меткой (а не над ней) */
   left: 50%;
   transform: translateX(-50%);
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-bottom: 10px solid #333; /* Цвет стрелки */
+  border-top: 10px solid #333; /* Цвет стрелки (изменен на border-top, чтобы указывать вверх) */
   z-index: 1002; /* Выше метки */
 }
 
+/* Стиль для метки координат (ПОД маркером) */
 .rbla-center-label {
   position: absolute;
-  top: -45px; /* Поднимаем метку над маркером */
+  bottom: -45px; /* Опускаем метку под маркер */
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.95);
