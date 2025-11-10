@@ -720,12 +720,14 @@ function calculateRbla() {
     // Если нужна более точная средняя высота, нужно генерировать точки по кругу и усреднять
     const avgTerrainElevation = elevation;
     const hpfl = roundUpTo50(avgTerrainElevation + flightHeightInputValue);
+    // === НОВОЕ: Высота в дециметрах для BAN ===
+    const hpflDecimeters = hpfl * 10;
 
     let content = `<div class="rbla-result-popup">
                      <h3>Расчет ИВП БЛА по радиусу</h3>
                      <p><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}</p>
                      <p><b>Высота рельефа (средняя):</b> ${Math.round(avgTerrainElevation)} м.</p>
-                     <p><b>HP-FL:</b> ${hpfl} м.</p>
+                     <p><b>HP-FL:</b> ${hpfl} м. (${hpflDecimeters} дм.)</p>
                      <p><b>Радиус:</b> ${radiusMeters} м</p>`;
 
     if (intersections.length > 0) {
@@ -770,9 +772,9 @@ function calculateRbla() {
             const convertedCoords = decimalToDegreesMinutes(centerPoint.lat, centerPoint.lng);
             // Формат радиуса: метры / 1000 и с одной цифрой после запятой
             const radiusFormatted = (radiusMeters / 1000).toFixed(1);
-            // Формат высоты: 4 цифры с ведущими нулями
-            const heightFormatted = padZero(hpfl, 4);
-            // === ИСПРАВЛЕНО: НОВЫЙ ФОРМАТ BAN ===
+            // Формат высоты: 4 цифры с ведущими нулями (дециметры)
+            const heightFormatted = padZero(hpflDecimeters, 4);
+            // === ИСПРАВЛЕНО: НОВЫЙ ФОРМАТ BAN (высота в дециметрах) ===
             const banText = `ПОЛЕТРАД/Р${radiusFormatted} ${convertedCoords}/М0000М${heightFormatted}/`;
             navigator.clipboard.writeText(banText).then(() => {
                 alert('Текст BAN скопирован в буфер обмена');
