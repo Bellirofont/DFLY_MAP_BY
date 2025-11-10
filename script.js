@@ -772,6 +772,7 @@ function calculateRbla() {
             const radiusFormatted = (radiusMeters / 1000).toFixed(1);
             // Формат высоты: 4 цифры с ведущими нулями
             const heightFormatted = padZero(hpfl, 4);
+            // === ИСПРАВЛЕНО: Правильный формат BAN ===
             const banText = `ПОЛЕТРАД/Р${radiusFormatted} ${convertedCoords}/М${heightFormatted}М/`;
             navigator.clipboard.writeText(banText).then(() => {
                 alert('Текст BAN скопирован в буфер обмена');
