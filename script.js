@@ -30,6 +30,9 @@ let pblaMarkers = [];
 let currentDraggingMarker = null;
 let dragStartTimeout = null;
 
+// === НОВАЯ ГЛОБАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ ВЫСОТЫ ===
+let flightHeightInputValue = 100;
+
 function getZoneStyle(feature) {
   const name = feature.properties?.Name || feature.properties?.name || '';
   const baseStyle = { weight: 2, opacity: 0.9, fillOpacity: 0.3 };
@@ -78,6 +81,35 @@ function getApproximateElevation(lat, lng) {
   const baseHeight = 160;
   const variation = Math.sin(lat * 10) * 50 + Math.cos(lng * 10) * 30;
   return Math.max(100, baseHeight + variation);
+}
+
+// === НОВАЯ ФУНКЦИЯ ОКРУГЛЕНИЯ ===
+function roundUpTo50(value) {
+  return Math.ceil(value / 50) * 50;
+}
+
+// === НОВАЯ ФУНКЦИЯ КОНВЕРТАЦИИ КООРДИНАТ ===
+function decimalToDegreesMinutes(lat, lng) {
+  const latAbs = Math.abs(lat);
+  const latDeg = Math.floor(latAbs);
+  const latMin = (latAbs - latDeg) * 60;
+  const latDir = lat >= 0 ? 'С' : 'Ю';
+
+  const lngAbs = Math.abs(lng);
+  const lngDeg = Math.floor(lngAbs);
+  const lngMin = (lngAbs - lngDeg) * 60;
+  const lngDir = lng >= 0 ? 'В' : 'З';
+
+  const formattedLat = `${padZero(latDeg, 2)}${padZero(Math.floor(latMin), 2)}${latDir}`;
+  const formattedLng = `${padZero(lngDeg, 3)}${padZero(Math.floor(lngMin), 2)}${lngDir}`;
+
+  return `${formattedLat}${formattedLng}`;
+}
+
+function padZero(num, size) {
+  let s = num.toString();
+  while (s.length < size) s = "0" + s;
+  return s;
 }
 
 function initCoordinatesDisplay() {
@@ -148,7 +180,24 @@ function initMap() {
   updateCenterCoordinates();
   loadZones();
   initButtons();
+  // === ИНИЦИАЛИЗАЦИЯ ПОЛЯ ВВОДА ===
+  initFlightHeightInput();
   createZoneToggleControl();
+}
+
+// === ИНИЦИАЛИЗАЦИЯ ПОЛЯ ВВОДА ВЫСОТЫ ===
+function initFlightHeightInput() {
+  const input = document.getElementById('h-fl');
+  if (input) {
+    input.addEventListener('input', function() {
+      let val = parseInt(this.value) || 0;
+      if (val < 0) val = 0;
+      this.value = val;
+      flightHeightInputValue = val;
+    });
+    // Устанавливаем начальное значение
+    flightHeightInputValue = parseInt(input.value) || 0;
+  }
 }
 
 function setInteractiveRecursive(layer, interactive) {
@@ -409,6 +458,10 @@ function createRblaCenterMarker(latlng) {
       tempLine.setLatLngs([newLatLng, currentEndLatLng]);
     }
     this._icon.classList.remove('editing-point');
+    // === НОВОЕ: ПЕРЕРАСЧЕТ ПРИ ПЕРЕМЕЩЕНИИ ===
+    if (tempCircle && radiusMeters) {
+        calculateRbla();
+    }
   });
 }
 
@@ -651,6 +704,7 @@ function resetRBLA() {
   enableZoneInteractivity();
 }
 
+// === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА Р-БЛА ===
 function calculateRbla() {
   if (!tempCircle) return alert('Сначала создайте круг с помощью Р-БЛА');
   if (!flyZonesGeoJSON) return alert('Зоны не загружены');
@@ -659,8 +713,20 @@ function calculateRbla() {
     radius: radiusMeters
   };
   const intersections = checkDetailedIntersections('circle', geometry);
+
+  // === НОВОЕ: Получение средней высоты в радиусе ===
   getElevation(centerPoint.lat, centerPoint.lng).then(elevation => {
-    let content = `<b>Расчет ИВП БЛА по радиусу</b><br><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}<br><b>Высота:</b> ${Math.round(elevation)} м.<br><b>Радиус:</b> ${radiusMeters} м<br>`;
+    // Для простоты, в Р-БЛА используем высоту центра как среднюю
+    // Если нужна более точная средняя высота, нужно генерировать точки по кругу и усреднять
+    const avgTerrainElevation = elevation;
+    const hpfl = roundUpTo50(avgTerrainElevation + flightHeightInputValue);
+
+    let content = `<div class="rbla-result-popup">
+                     <h3>Расчет ИВП БЛА по радиусу</h3>
+                     <p><b>Центр:</b> ${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}</p>
+                     <p><b>Высота рельефа (средняя):</b> ${Math.round(avgTerrainElevation)} м.</p>
+                     <p><b>HP-FL:</b> ${hpfl} м.</p>
+                     <p><b>Радиус:</b> ${radiusMeters} м</p>`;
 
     if (intersections.length > 0) {
       let columnCount = 1;
@@ -669,21 +735,55 @@ function calculateRbla() {
       } else if (intersections.length >= 19 && intersections.length <= 32) {
         columnCount = 3;
       }
-      content += `<b>Пересечения зон:</b><br><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
+      content += `<p><b>Пересечения зон:</b></p><ul style="column-count: ${columnCount}; column-gap: 40px; list-style-type: disc;">`;
       intersections.forEach(inter => {
-        // Выводим только имя зоны, без деталей, чтобы не перегружать
         content += `<li style="word-break: break-word;">${inter.name}</li>`;
       });
       content += `</ul>`;
     } else {
-      content += `<b>Пересечений нет</b>`;
+      content += `<p><b>Пересечений нет</b></p>`;
     }
+
+    content += `<div class="popup-buttons">
+                   <button id="btn-copy-t">Copy-T</button>
+                   <button id="btn-copy-ban">Copy-BAN</button>
+                 </div>
+               </div>`;
 
     if (!tempCircle.getPopup()) tempCircle.bindPopup(content);
     else tempCircle.setPopupContent(content);
     tempCircle.openPopup();
+
+    // === НОВОЕ: Привязка обработчиков к кнопкам в попапе ===
+    setTimeout(() => { // Ждем, пока попап откроется и DOM обновится
+        document.getElementById('btn-copy-t').addEventListener('click', () => {
+            const coords = `${centerPoint.lat.toFixed(6)}, ${centerPoint.lng.toFixed(6)}`;
+            navigator.clipboard.writeText(coords).then(() => {
+                alert('Координаты скопированы в буфер обмена');
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+                alert('Ошибка копирования');
+            });
+        });
+
+        document.getElementById('btn-copy-ban').addEventListener('click', () => {
+            const convertedCoords = decimalToDegreesMinutes(centerPoint.lat, centerPoint.lng);
+            // Формат радиуса: метры / 1000 и с одной цифрой после запятой
+            const radiusFormatted = (radiusMeters / 1000).toFixed(1);
+            // Формат высоты: 4 цифры с ведущими нулями
+            const heightFormatted = padZero(hpfl, 4);
+            const banText = `ПОЛЕТРАД/Р${radiusFormatted} ${convertedCoords}/М${heightFormatted}М/`;
+            navigator.clipboard.writeText(banText).then(() => {
+                alert('Текст BAN скопирован в буфер обмена');
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+                alert('Ошибка копирования');
+            });
+        });
+    }, 100); // Небольшая задержка, чтобы элементы точно появились в DOM
+
   });
-  document.getElementById('btn-calculate').style.display = 'none';
+  // document.getElementById('btn-calculate').style.display = 'none'; // Не скрываем кнопку, если расчет происходит при перемещении
   // Блокировка дальнейшего добавления/изменения
   rblaMode = false;
   map.off('mousemove', drawTempLine);
@@ -692,6 +792,7 @@ function calculateRbla() {
   enableZoneInteractivity();
 }
 
+// === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА М-БЛА ===
 function calculateMbla() {
   if (mblaPoints.length < 2) return alert('Недостаточно точек для маршрута');
   const geometry = {
@@ -700,11 +801,13 @@ function calculateMbla() {
   const intersections = checkDetailedIntersections('line', geometry);
   const elevationPromises = mblaPoints.map(point => getElevation(point.lat, point.lng));
   Promise.all(elevationPromises).then(elevations => {
-    let content = `<b>Расчет ИВП БЛА по маршруту</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
+    // Рассчитываем HP-FL для каждой точки
+    const hpflValues = elevations.map(elev => roundUpTo50(elev + flightHeightInputValue));
 
-    content += '<b>Высоты рельефа:</b><br>';
+    let content = `<b>Расчет ИВП БЛА по маршруту</b><br><b>Маршрутных точек:</b> ${mblaPoints.length}<br>`;
+    content += '<b>Высоты рельефа / HP-FL:</b><br>';
     elevations.forEach((elevation, index) => {
-      content += `• Точка ${index + 1}: ${Math.round(elevation)} м<br>`;
+      content += `• Точка ${index + 1}: ${Math.round(elevation)} м / ${hpflValues[index]} м<br>`;
     });
 
     if (intersections.length > 0) {
@@ -745,6 +848,7 @@ function calculateMbla() {
   enableZoneInteractivity();
 }
 
+// === ОБНОВЛЕННАЯ ФУНКЦИЯ РАСЧЕТА П-БЛА ===
 function calculatePbla() {
   if (pblaPoints.length < 3) return alert('Недостаточно точек для полигона');
   const polygonPoints = [...pblaPoints, pblaPoints[0]];
@@ -754,8 +858,11 @@ function calculatePbla() {
   const intersections = checkDetailedIntersections('polygon', geometry);
   const elevationPromises = pblaPoints.map(point => getElevation(point.lat, point.lng));
   Promise.all(elevationPromises).then(elevations => {
-    const avgElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
-    let content = `<b>Расчет ИВП БЛА по полигону</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота:</b> ${Math.round(avgElevation)} м.<br>`;
+    // Рассчитываем среднюю высоту рельефа для точек полигона
+    const avgTerrainElevation = elevations.reduce((sum, elevation) => sum + elevation, 0) / elevations.length;
+    const hpfl = roundUpTo50(avgTerrainElevation + flightHeightInputValue);
+
+    let content = `<b>Расчет ИВП БЛА по полигону</b><br><b>Точек полигона:</b> ${pblaPoints.length}<br><b>Средняя высота рельефа:</b> ${Math.round(avgTerrainElevation)} м.<br><b>HP-FL:</b> ${hpfl} м.<br>`;
     if (intersections.length > 0) {
       let columnCount = 1;
       if (intersections.length >= 6 && intersections.length <= 18) {
