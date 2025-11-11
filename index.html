@@ -3,41 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-eval' https://unpkg.com https://telegram.org; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' https:; connect-src 'self' https:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-eval' https://unpkg.com   https://telegram.org  ; style-src 'self' 'unsafe-inline' https://unpkg.com  ; img-src 'self' https:; connect-src 'self' https:;">
   <title>ПЛАН-БЛА</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css  " />
   <link rel="stylesheet" href="style.css" />
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js  "></script>
 </head>
 <body>
   <div id="map"></div>
   <div id="crosshair"></div>
-  <!-- Новое поле ввода высоты -->
+
+  <!-- Новое поле ввода высоты с подсказкой -->
   <div id="flight-height-input">
     <label for="h-fl">H-FL (м):</label>
-    <input type="number" id="h-fl" min="0" value="100" step="10">
+    <input type="number" id="h-fl" min="0" value="100" step="10" title="Задайте высоту полета БЛА над уровнем рельефа (в метрах)">
   </div>
+
   <div id="control-panel">
-    <button id="btn-rbla">Р-БЛА</button>
-    <button id="btn-mbla">М-БЛА</button>
-    <button id="btn-pbla">П-БЛА</button>
-    <button id="btn-gps">GPS</button>
-    <button id="btn-operator" style="display: none;">Маркер-О</button>
-    <button id="btn-calculate" style="display: none;">Рассчитать</button>
+    <button id="btn-rbla" title="Режим Р-БЛА: Расчет по радиусу. Установите центральную точку и задайте радиус действия.">Р-БЛА</button>
+    <button id="btn-mbla" title="Режим М-БЛА: Расчет по маршруту. Устанавливайте точки маршрута последовательно.">М-БЛА</button>
+    <button id="btn-pbla" title="Режим П-БЛА: Расчет по полигону. Устанавливайте вершины полигона. Минимум 3 точки.">П-БЛА</button>
+    <button id="btn-gps" title="Определить текущее местоположение по GPS">GPS</button>
+    <button id="btn-operator" style="display: none;" title="Установить маркер оператора в центре карты">Маркер-О</button>
+    <button id="btn-calculate" style="display: none;" title="Выполнить расчет ИВП для выбранного режима (Р-БЛА, М-БЛА, П-БЛА)">Рассчитать</button>
   </div>
   
   <div id="extra-controls">
     <div class="dropdown">
-      <button class="dropdown-btn">⋮</button>
+      <button class="dropdown-btn" title="Дополнительные настройки">⋮</button>
       <div class="dropdown-content">
-        <button id="btn-cnl">CNL</button>
-        <button id="btn-rld">RLD</button>
+        <button id="btn-cnl" title="Отменить текущий режим работы (Р-БЛА, М-БЛА, П-БЛА)">CNL</button>
+        <button id="btn-rld" title="Перезагрузить страницу и сбросить все данные">RLD</button>
       </div>
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js  "></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js  "></script>
   <script src="script.js"></script>
 </body>
 </html>
